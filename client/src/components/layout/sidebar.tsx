@@ -8,6 +8,9 @@ import {
   Gauge,
   Search,
   Bot,
+  Activity,
+  FileText,
+  HeartPulse,
   ChevronLeft,
   ChevronRight,
   Sun,
@@ -38,6 +41,7 @@ const NAV_SECTIONS: NavSection[] = [
     header: 'Overview',
     items: [
       { label: 'Dashboard', path: '/', icon: LayoutDashboard },
+      { label: 'Activity', path: '/activity', icon: Activity },
     ],
   },
   {
@@ -55,6 +59,13 @@ const NAV_SECTIONS: NavSection[] = [
       { label: 'Page Speed', path: '/speed', icon: Gauge },
       { label: 'SEO Audit', path: '/seo', icon: Search },
       { label: 'AEO', path: '/aeo', icon: Bot },
+      { label: 'Site Health', path: '/health', icon: HeartPulse },
+    ],
+  },
+  {
+    header: 'Deliver',
+    items: [
+      { label: 'Reports', path: '/reports', icon: FileText },
     ],
   },
 ];

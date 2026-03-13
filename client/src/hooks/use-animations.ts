@@ -38,7 +38,7 @@ export function useAnimationPresets(filters: PresetFilters = {}) {
   if (filters.search) params.set('search', filters.search);
 
   const queryString = params.toString();
-  const path = `/animations${queryString ? `?${queryString}` : ''}`;
+  const path = `/animations/presets${queryString ? `?${queryString}` : ''}`;
 
   return useQuery({
     queryKey: ['animation-presets', filters],
@@ -51,7 +51,7 @@ export function useAnimationPreset(presetId: string | null) {
   return useQuery({
     queryKey: ['animation-preset', presetId],
     queryFn: () =>
-      api.get<PresetResponse>(`/animations/${presetId}`).then((r) => r.data),
+      api.get<PresetResponse>(`/animations/presets/${presetId}`).then((r) => r.data),
     enabled: !!presetId,
   });
 }
@@ -69,7 +69,7 @@ export function useCreateAnimationPreset() {
       config: Record<string, unknown>;
       previewHtml?: string;
       tags?: string[];
-    }) => api.post<PresetResponse>('/animations', data).then((r) => r.data),
+    }) => api.post<PresetResponse>('/animations/presets', data).then((r) => r.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['animation-presets'] });
     },
@@ -93,7 +93,7 @@ export function useUpdateAnimationPreset() {
       config?: Record<string, unknown>;
       previewHtml?: string;
       tags?: string[];
-    }) => api.put<PresetResponse>(`/animations/${id}`, data).then((r) => r.data),
+    }) => api.put<PresetResponse>(`/animations/presets/${id}`, data).then((r) => r.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['animation-presets'] });
     },
@@ -104,7 +104,7 @@ export function useUpdateAnimationPreset() {
 export function useDeleteAnimationPreset() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => api.delete(`/animations/${id}`),
+    mutationFn: (id: string) => api.delete(`/animations/presets/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['animation-presets'] });
     },

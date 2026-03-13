@@ -13,6 +13,9 @@ const AnimationsPage = lazy(() => import('@/pages/animations'));
 const SpeedPage = lazy(() => import('@/pages/speed'));
 const SeoPage = lazy(() => import('@/pages/seo'));
 const AeoPage = lazy(() => import('@/pages/aeo'));
+const ActivityPage = lazy(() => import('@/pages/activity'));
+const ReportsPage = lazy(() => import('@/pages/reports'));
+const HealthPage = lazy(() => import('@/pages/health'));
 const SettingsPage = lazy(() => import('@/pages/settings'));
 const LoginPage = lazy(() => import('@/pages/login'));
 const RegisterPage = lazy(() => import('@/pages/register'));
@@ -109,6 +112,7 @@ export default function App() {
               }
             >
               <Route index element={<DashboardPage />} />
+              <Route path="activity" element={<ActivityPage />} />
               <Route path="setup" element={<SetupPage />} />
               <Route path="figma" element={<FigmaPage />} />
               <Route path="templates" element={<TemplatesPage />} />
@@ -116,6 +120,8 @@ export default function App() {
               <Route path="speed" element={<SpeedPage />} />
               <Route path="seo" element={<SeoPage />} />
               <Route path="aeo" element={<AeoPage />} />
+              <Route path="reports" element={<ReportsPage />} />
+              <Route path="health" element={<HealthPage />} />
               <Route path="settings" element={<SettingsPage />} />
             </Route>
 

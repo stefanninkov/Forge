@@ -12,6 +12,8 @@ import { integrationRoutes } from './routes/integrations/index.js';
 import { figmaRoutes } from './routes/figma/index.js';
 import { templateRoutes } from './routes/templates/index.js';
 import { auditRoutes } from './routes/audits/index.js';
+import { activityRoutes } from './routes/activity/index.js';
+import { favoriteRoutes } from './routes/favorites/index.js';
 
 const isDev = env.NODE_ENV === 'development';
 
@@ -51,6 +53,8 @@ async function start() {
   await app.register(figmaRoutes, { prefix: '/api/figma' });
   await app.register(templateRoutes, { prefix: '/api/templates' });
   await app.register(auditRoutes, { prefix: '/api' });
+  await app.register(activityRoutes, { prefix: '/api/activity' });
+  await app.register(favoriteRoutes, { prefix: '/api/favorites' });
 
   // Health check
   app.get('/api/health', async () => {

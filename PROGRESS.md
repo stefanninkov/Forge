@@ -308,7 +308,7 @@
 
 ---
 
-## All Phases Complete
+## All Core Phases Complete
 
 Phase order from PLAN.md:
 1. ~~Foundation~~ ✓
@@ -317,3 +317,43 @@ Phase order from PLAN.md:
 4. ~~Figma → Structure Translator~~ ✓
 5. ~~Section Template Library~~ ✓
 6. ~~Speed/SEO/AEO Audit Modules~~ ✓
+
+---
+
+## Expansion Phase — IN PROGRESS (2026-03-13)
+
+### Completed
+
+#### Unified Visual Editing Engine (all foundation components)
+- `UnitInput` — Numeric input with CSS unit toggle (px/rem/em/%)
+- `HelpTooltip` — Hover tooltip with ? icon, guide links
+- `ColorPicker` — Swatch + hex input + popup with native picker + HSL display
+- `PropertyGroup` — Collapsible section with chevron
+- `CompactSelect` — Compact dropdown select
+- `IconButtonGroup` — Icon toggle group for alignment/direction
+- `StylePanel` — Full CSS property editor with breakpoint selector, visual/code toggle
+- `LivePreview` — Sandboxed iframe with responsive toggle and animation support
+- `AnimationEditor` — Preset-based animation configurator with 20 presets
+- `TimelineEditor` — Keyframe-based timeline with draggable diamonds, multi-track
+- `ScalingConfigEditor` — Visual REM fluid scaling breakpoint editor
+
+#### Command Palette (Cmd+K) — Integrated into AppLayout
+#### Semantic HTML & Accessibility Panel — Full audit with severity filtering
+#### Section Capture Panel — Grid/list view, folders, context menu
+#### MCP Connection Management Panel — Status, token input, site list
+#### Master Script Status Panel — Deploy status, dependencies, code viewer
+
+#### Database Schema Expansion
+- New tables: favorites, activity_logs, captured_sections, section_folders, scaling_configs, notification_preferences, handoff_reports
+- New enums: ScriptStatus, ActivityAction
+- Updated users + projects with new fields and relations
+- Migration `20260313213952_add_expansion_tables` applied
+
+#### Settings System (7 tabs)
+- Account, Appearance, Integrations, Notifications, Scaling, Shortcuts, Data
+
+### Next Up
+- Build and deploy to production
+- Quality of Life features
+- Activity Log, Handoff Reports, Health Dashboard
+- In-App Guide System

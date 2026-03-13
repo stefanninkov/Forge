@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MoreHorizontal, Pencil, Trash2, FolderOpen, Settings2 } from 'lucide-react';
+import { MoreHorizontal, Pencil, Trash2, FolderOpen, Settings2, Star } from 'lucide-react';
+import { useIsFavorited, useToggleFavorite } from '@/hooks/use-favorites';
 import type { Project } from '@/types/project';
 
 export interface ProjectCardProps {
@@ -12,6 +13,8 @@ export interface ProjectCardProps {
 export function ProjectCard({ project, onEdit, onDelete }: ProjectCardProps) {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
+  const { data: isFavorited } = useIsFavorited('project', project.id);
+  const toggleFavorite = useToggleFavorite();
 
   const formattedDate = new Date(project.createdAt).toLocaleDateString('en-US', {
     month: 'short',
@@ -86,8 +89,35 @@ export function ProjectCard({ project, onEdit, onDelete }: ProjectCardProps) {
           </div>
         </div>
 
-        {/* Menu button */}
-        <div style={{ position: 'relative' }}>
+        {/* Actions */}
+        <div className="flex items-center" style={{ gap: 2 }}>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleFavorite.mutate({ type: 'project', targetId: project.id });
+            }}
+            className="flex items-center justify-center border-none bg-transparent cursor-pointer"
+            style={{
+              width: 28,
+              height: 28,
+              borderRadius: 'var(--radius-md)',
+              color: isFavorited ? '#f59e0b' : 'var(--text-tertiary)',
+              transition: 'color var(--duration-fast)',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--surface-active)';
+              if (!isFavorited) e.currentTarget.style.color = '#f59e0b';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'transparent';
+              if (!isFavorited) e.currentTarget.style.color = 'var(--text-tertiary)';
+            }}
+            aria-label={isFavorited ? 'Remove from favorites' : 'Add to favorites'}
+          >
+            <Star size={14} fill={isFavorited ? '#f59e0b' : 'none'} />
+          </button>
+
+          <div style={{ position: 'relative' }}>
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -214,6 +244,7 @@ export function ProjectCard({ project, onEdit, onDelete }: ProjectCardProps) {
               </button>
             </div>
           )}
+        </div>
         </div>
       </div>
 
