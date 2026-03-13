@@ -1,0 +1,29 @@
+databases:
+  - name: forge-db
+    plan: free
+    databaseName: forge
+    user: forge
+
+services:
+  - type: web
+    name: forge-api
+    plan: free
+    runtime: node
+    rootDir: server
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: forge-db
+          property: connectionString
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: FRONTEND_URL
+        value: https://stefanninkov.github.io

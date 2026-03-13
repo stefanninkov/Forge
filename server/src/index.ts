@@ -9,12 +9,12 @@ import { projectRoutes } from './routes/projects/index.js';
 import { setupRoutes, setupProfileRoutes } from './routes/setup/index.js';
 import { animationRoutes, projectAnimationRoutes } from './routes/animations/index.js';
 
+const isDev = env.NODE_ENV === 'development';
+
 const app = Fastify({
   logger: {
-    level: env.NODE_ENV === 'development' ? 'info' : 'warn',
-    transport: env.NODE_ENV === 'development'
-      ? { target: 'pino-pretty', options: { colorize: true } }
-      : undefined,
+    level: isDev ? 'info' : 'warn',
+    ...(isDev ? { transport: { target: 'pino-pretty', options: { colorize: true } } } : {}),
   },
 });
 
@@ -24,7 +24,7 @@ async function start() {
 
   // Plugins
   await app.register(cors, {
-    origin: env.FRONTEND_URL,
+    origin: env.FRONTEND_URL.split(',').map((u) => u.trim()),
     credentials: true,
   });
 
