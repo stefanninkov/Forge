@@ -41,6 +41,8 @@ model Project {
   setupProfile    SetupProfile?   @relation(fields: [setupProfileId], references: [id])
   setupProgress   SetupProgress[]
   figmaAnalyses   FigmaAnalysis[]
+  audits          Audit[]
+  auditAlerts     AuditAlert[]
 
   @@map("projects")
 }
@@ -187,6 +189,64 @@ enum TemplateType {
   STYLED
 
   @@map("template_type")
+}
+
+model Audit {
+  id         String    @id @default(uuid()) @db.Uuid
+  projectId  String    @map("project_id") @db.Uuid
+  type       AuditType
+  urlAudited String    @map("url_audited")
+  results    Json
+  score      Float
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  project Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  alerts  AuditAlert[]
+
+  @@index([projectId])
+  @@index([type])
+  @@map("audits")
+}
+
+model AuditAlert {
+  id        String        @id @default(uuid()) @db.Uuid
+  auditId   String        @map("audit_id") @db.Uuid
+  projectId String        @map("project_id") @db.Uuid
+  type      AlertType
+  message   String
+  severity  AlertSeverity
+  read      Boolean       @default(false)
+  createdAt DateTime      @default(now()) @map("created_at")
+
+  audit   Audit   @relation(fields: [auditId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@map("audit_alerts")
+}
+
+enum AuditType {
+  SPEED
+  SEO
+  AEO
+
+  @@map("audit_type")
+}
+
+enum AlertSeverity {
+  INFO
+  WARNING
+  CRITICAL
+
+  @@map("alert_severity")
+}
+
+enum AlertType {
+  SCORE_DROP
+  ISSUE_FOUND
+  NEW_ERROR
+
+  @@map("alert_type")
 }
 
 enum AnimationEngine {

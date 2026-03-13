@@ -257,12 +257,63 @@
 
 ---
 
-## Next: Phase 5+ (Pending)
+## Phase 5: Section Template Library — COMPLETE
+
+### Backend (completed)
+- `server/prisma/schema.prisma` — Added Template model with TemplateType enum
+- `server/src/services/template-service.ts` — Full CRUD + filtering
+- `server/src/routes/templates/` — REST endpoints with Zod validation
+
+### Frontend (completed)
+- `client/src/types/template.ts` — Template types
+- `client/src/hooks/use-templates.ts` — TanStack Query hooks
+- `client/src/pages/templates.tsx` — Template library page with grid, filters, search
+
+---
+
+## Phase 6: Speed / SEO / AEO Audit Modules — COMPLETE
+
+### Database (completed)
+- Added `Audit` model, `AuditAlert` model to schema
+- Added enums: `AuditType` (SPEED/SEO/AEO), `AlertSeverity` (INFO/WARNING/CRITICAL), `AlertType` (SCORE_DROP/ISSUE_FOUND/NEW_ERROR)
+- Added `audits` and `auditAlerts` relations to `Project` model
+- Migration `20260313104651_add_audits` applied
+
+### Backend (completed)
+- `server/src/services/audit-service.ts` — Shared CRUD: listAudits, getAudit, deleteAudit, getAuditHistory, listAlerts, markAlertRead, checkScoreDrop (auto-alerts on >10pt drop)
+- `server/src/services/speed-service.ts` — Google PageSpeed Insights API integration, fetches mobile+desktop, parses Lighthouse into categories (Images, Fonts, Scripts, Webflow Overhead, Core Web Vitals), extracts CWV metrics
+- `server/src/services/seo-service.ts` — HTML fetch + node-html-parser, checks: meta title/desc, H1 count, heading hierarchy, alt text, canonical, OG tags, JSON-LD, robots, viewport, lang
+- `server/src/services/aeo-service.ts` — AI engine visibility analysis: FAQ schema, Q&A structure, answer paragraph optimization, heading clusters, entity coverage, freshness signals
+- `server/src/routes/audits/` — All endpoints: POST speed/seo/aeo audits, GET list/history/detail, DELETE audit, GET alerts, PUT mark alert read
+- Registered in `server/src/index.ts`
+
+### Frontend (completed)
+- `client/src/types/audit.ts` — Types for all audit types, findings, CWV metrics, history points; category constants with labels
+- `client/src/hooks/use-audits.ts` — TanStack Query hooks: useAudits, useAudit, useAuditHistory, useRunSpeedAudit, useRunSeoAudit, useRunAeoAudit, useDeleteAudit, useAlerts, useMarkAlertRead
+- `client/src/components/modules/audit/score-card.tsx` — Color-coded score (green/amber/red), trend arrow
+- `client/src/components/modules/audit/finding-row.tsx` — Expandable severity-coded finding with recommendation
+- `client/src/components/modules/audit/audit-header.tsx` — Project selector, URL input, Run Audit button, last audited timestamp
+- `client/src/components/modules/audit/category-tabs.tsx` — Horizontal tab bar with count badges
+- `client/src/components/modules/audit/score-history-chart.tsx` — SVG line chart with hover tooltips
+- `client/src/pages/speed.tsx` — Strategy toggle (mobile/desktop), score cards (Performance/LCP/CLS/INP), CWV values, categorized findings, score history
+- `client/src/pages/seo.tsx` — SEO Score card, category tabs (Meta/Headings/Schema/Links/Images/Technical), findings, history
+- `client/src/pages/aeo.tsx` — AEO Score card, category tabs (FAQ Schema/Q&A Structure/Answers/Headings/Entities/Freshness), findings, history
+
+### Technical Notes
+- Speed audit fetches both mobile and desktop strategies in parallel, uses mobile score as primary
+- SEO scoring: -10 per error, -3 per warning from 100 base
+- AEO scoring: -12 per error, -5 per warning from 100 base
+- SVG chart built without external chart library
+- All three pages share common audit components (score-card, finding-row, category-tabs, audit-header, score-history-chart)
+
+---
+
+## All Phases Complete
 
 Phase order from PLAN.md:
 1. ~~Foundation~~ ✓
 2. ~~Project Setup Wizard~~ ✓
 3. ~~Animation Engine~~ ✓
 4. ~~Figma → Structure Translator~~ ✓
-5. Section Template Library
-6. Speed/SEO/AEO Audit Modules
+5. ~~Section Template Library~~ ✓
+6. ~~Speed/SEO/AEO Audit Modules~~ ✓

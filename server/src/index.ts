@@ -11,6 +11,7 @@ import { animationRoutes, projectAnimationRoutes } from './routes/animations/ind
 import { integrationRoutes } from './routes/integrations/index.js';
 import { figmaRoutes } from './routes/figma/index.js';
 import { templateRoutes } from './routes/templates/index.js';
+import { auditRoutes } from './routes/audits/index.js';
 
 const isDev = env.NODE_ENV === 'development';
 
@@ -49,6 +50,7 @@ async function start() {
   await app.register(integrationRoutes, { prefix: '/api/integrations' });
   await app.register(figmaRoutes, { prefix: '/api/figma' });
   await app.register(templateRoutes, { prefix: '/api/templates' });
+  await app.register(auditRoutes, { prefix: '/api' });
 
   // Health check
   app.get('/api/health', async () => {
