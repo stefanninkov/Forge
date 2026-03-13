@@ -1,0 +1,21 @@
+{
+  "name": "forge",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Full-pipeline Webflow development accelerator",
+  "workspaces": [
+    "client",
+    "server",
+    "shared"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:client\" \"npm run dev:server\"",
+    "dev:client": "npm -w client run dev",
+    "dev:server": "npm -w server run dev",
+    "build": "npm -w shared run build && npm -w client run build && npm -w server run build",
+    "lint": "npm -w client run lint && npm -w server run lint"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}
