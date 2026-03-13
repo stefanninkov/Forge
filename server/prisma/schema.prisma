@@ -20,6 +20,7 @@ model User {
 
   projects      Project[]
   setupProfiles SetupProfile[]
+  integrations  UserIntegration[]
 
   @@map("users")
 }
@@ -36,9 +37,10 @@ model Project {
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
 
-  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  setupProfile  SetupProfile?   @relation(fields: [setupProfileId], references: [id])
-  setupProgress SetupProgress[]
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  setupProfile    SetupProfile?   @relation(fields: [setupProfileId], references: [id])
+  setupProgress   SetupProgress[]
+  figmaAnalyses   FigmaAnalysis[]
 
   @@map("projects")
 }
@@ -102,6 +104,43 @@ model RefreshToken {
 
   @@index([userId])
   @@map("refresh_tokens")
+}
+
+model UserIntegration {
+  id           String    @id @default(uuid()) @db.Uuid
+  userId       String    @map("user_id") @db.Uuid
+  provider     String
+  accessToken  String?   @map("access_token")
+  refreshToken String?   @map("refresh_token")
+  expiresAt    DateTime? @map("expires_at")
+  metadata     Json?
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, provider])
+  @@map("user_integrations")
+}
+
+model FigmaAnalysis {
+  id              String    @id @default(uuid()) @db.Uuid
+  projectId       String    @map("project_id") @db.Uuid
+  figmaFileKey    String    @map("figma_file_key")
+  figmaPageName   String?   @map("figma_page_name")
+  rawStructure    Json?     @map("raw_structure")
+  auditResults    Json?     @map("audit_results")
+  aiSuggestions   Json?     @map("ai_suggestions")
+  finalStructure  Json?     @map("final_structure")
+  pushedToWebflow Boolean   @default(false) @map("pushed_to_webflow")
+  pushedAt        DateTime? @map("pushed_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@map("figma_analyses")
 }
 
 enum Plan {

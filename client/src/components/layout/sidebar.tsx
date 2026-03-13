@@ -13,6 +13,7 @@ import {
   Sun,
   Moon,
   LogOut,
+  Settings,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/hooks/use-theme';
@@ -292,6 +293,45 @@ export function Sidebar() {
             <ChevronRight size={16} />
           </button>
         )}
+
+        {/* Settings */}
+        <Link
+          to="/settings"
+          className={cn(
+            'flex items-center no-underline',
+            collapsed && 'justify-center',
+          )}
+          style={{
+            height: 36,
+            padding: collapsed ? '0 8px' : '0 12px',
+            borderRadius: 'var(--radius-md)',
+            fontSize: 'var(--text-sm)',
+            fontWeight: 500,
+            gap: 10,
+            color: isActive('/settings')
+              ? 'var(--accent-text)'
+              : 'var(--text-secondary)',
+            backgroundColor: isActive('/settings')
+              ? 'var(--accent-subtle)'
+              : 'transparent',
+          }}
+          onMouseEnter={(e) => {
+            if (!isActive('/settings')) {
+              e.currentTarget.style.backgroundColor = 'var(--surface-hover)';
+              e.currentTarget.style.color = 'var(--text-primary)';
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (!isActive('/settings')) {
+              e.currentTarget.style.backgroundColor = 'transparent';
+              e.currentTarget.style.color = 'var(--text-secondary)';
+            }
+          }}
+          title={collapsed ? 'Settings' : undefined}
+        >
+          <Settings size={18} style={{ flexShrink: 0 }} />
+          {!collapsed && <span>Settings</span>}
+        </Link>
 
         {/* Theme toggle */}
         <button
