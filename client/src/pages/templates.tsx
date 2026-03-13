@@ -1,13 +1,15 @@
 import { useState, useCallback, useMemo } from 'react';
-import { Download, Loader2 } from 'lucide-react';
+import { Download, Loader2, Plus } from 'lucide-react';
 import { PageHeader } from '@/components/layout/page-header';
 import { usePageTitle } from '@/hooks/use-page-title';
 import { TemplateCard } from '@/components/modules/templates/template-card';
 import { TemplateFiltersBar } from '@/components/modules/templates/template-filters';
 import { TemplateDetailPanel } from '@/components/modules/templates/template-detail-panel';
+import { CreateTemplateDialog } from '@/components/modules/templates/create-template-dialog';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import {
   useTemplates,
+  useCreateTemplate,
   useSeedTemplates,
   useDeleteTemplate,
   useDuplicateTemplate,
@@ -21,8 +23,10 @@ export default function TemplatesPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<TemplateSummary | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
 
   const { data: templates, isLoading, error } = useTemplates(filters);
+  const createMutation = useCreateTemplate();
   const seedMutation = useSeedTemplates();
   const deleteMutation = useDeleteTemplate();
   const duplicateMutation = useDuplicateTemplate();
@@ -79,39 +83,66 @@ export default function TemplatesPage() {
         title="Templates"
         description="Browse and manage section templates for your projects."
         actions={
-          <button
-            onClick={handleSeed}
-            disabled={seedMutation.isPending}
-            className="flex items-center"
-            style={{
-              gap: 6,
-              height: 32,
-              padding: '0 12px',
-              border: '1px solid var(--border-default)',
-              borderRadius: 'var(--radius-md)',
-              backgroundColor: 'transparent',
-              color: 'var(--text-primary)',
-              fontSize: 'var(--text-xs)',
-              fontWeight: 500,
-              cursor: seedMutation.isPending ? 'not-allowed' : 'pointer',
-              opacity: seedMutation.isPending ? 0.5 : 1,
-              fontFamily: 'var(--font-sans)',
-            }}
-            onMouseEnter={(e) => {
-              if (!seedMutation.isPending)
-                e.currentTarget.style.backgroundColor = 'var(--surface-hover)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'transparent';
-            }}
-          >
-            {seedMutation.isPending ? (
-              <Loader2 size={13} className="animate-spin" />
-            ) : (
-              <Download size={13} />
-            )}
-            Seed Presets
-          </button>
+          <div className="flex items-center" style={{ gap: 8 }}>
+            <button
+              onClick={handleSeed}
+              disabled={seedMutation.isPending}
+              className="flex items-center"
+              style={{
+                gap: 6,
+                height: 32,
+                padding: '0 12px',
+                border: '1px solid var(--border-default)',
+                borderRadius: 'var(--radius-md)',
+                backgroundColor: 'transparent',
+                color: 'var(--text-primary)',
+                fontSize: 'var(--text-xs)',
+                fontWeight: 500,
+                cursor: seedMutation.isPending ? 'not-allowed' : 'pointer',
+                opacity: seedMutation.isPending ? 0.5 : 1,
+                fontFamily: 'var(--font-sans)',
+              }}
+              onMouseEnter={(e) => {
+                if (!seedMutation.isPending)
+                  e.currentTarget.style.backgroundColor = 'var(--surface-hover)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+              }}
+            >
+              {seedMutation.isPending ? (
+                <Loader2 size={13} className="animate-spin" />
+              ) : (
+                <Download size={13} />
+              )}
+              Seed Presets
+            </button>
+            <button
+              onClick={() => setCreateOpen(true)}
+              className="flex items-center border-none cursor-pointer"
+              style={{
+                height: 32,
+                padding: '0 12px',
+                gap: 6,
+                borderRadius: 'var(--radius-md)',
+                backgroundColor: 'var(--accent)',
+                color: '#fff',
+                fontSize: 'var(--text-xs)',
+                fontWeight: 500,
+                fontFamily: 'var(--font-sans)',
+                transition: 'background-color var(--duration-fast)',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--accent-hover)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--accent)';
+              }}
+            >
+              <Plus size={13} />
+              New Template
+            </button>
+          </div>
         }
       />
 
@@ -258,6 +289,18 @@ export default function TemplatesPage() {
         open={detailOpen}
         onClose={handleCloseDetail}
         onDuplicate={handleDuplicateFromPanel}
+      />
+
+      {/* Create template dialog */}
+      <CreateTemplateDialog
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        onSubmit={(data) => {
+          createMutation.mutate(data, {
+            onSuccess: () => setCreateOpen(false),
+          });
+        }}
+        loading={createMutation.isPending}
       />
 
       {/* Delete confirmation */}

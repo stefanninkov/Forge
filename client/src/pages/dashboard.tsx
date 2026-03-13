@@ -5,6 +5,7 @@ import { usePageTitle } from '@/hooks/use-page-title';
 import { ProjectCard } from '@/components/shared/project-card';
 import { CreateProjectDialog } from '@/components/shared/create-project-dialog';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
+import { WelcomeDialog } from '@/components/shared/welcome-dialog';
 import { useProjects, useCreateProject, useUpdateProject, useDeleteProject } from '@/hooks/use-projects';
 import type { Project } from '@/types/project';
 
@@ -240,6 +241,9 @@ export default function DashboardPage() {
         loading={deleteProject.isPending}
         destructive
       />
+
+      {/* First-run welcome */}
+      <WelcomeDialog onCreateProject={() => setCreateOpen(true)} />
     </>
   );
 }

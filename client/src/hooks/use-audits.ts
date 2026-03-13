@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import type { Audit, AuditAlert, AuditHistoryPoint, AuditType } from '@/types/audit';
 
@@ -68,7 +69,9 @@ export function useRunSpeedAudit() {
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ['audits', 'list', vars.projectId, 'SPEED'] });
       qc.invalidateQueries({ queryKey: ['audits', 'history', vars.projectId, 'SPEED'] });
+      toast.success('Speed audit complete');
     },
+    onError: () => toast.error('Speed audit failed'),
   });
 }
 
@@ -81,7 +84,9 @@ export function useRunSeoAudit() {
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ['audits', 'list', vars.projectId, 'SEO'] });
       qc.invalidateQueries({ queryKey: ['audits', 'history', vars.projectId, 'SEO'] });
+      toast.success('SEO audit complete');
     },
+    onError: () => toast.error('SEO audit failed'),
   });
 }
 
@@ -94,7 +99,9 @@ export function useRunAeoAudit() {
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ['audits', 'list', vars.projectId, 'AEO'] });
       qc.invalidateQueries({ queryKey: ['audits', 'history', vars.projectId, 'AEO'] });
+      toast.success('AEO audit complete');
     },
+    onError: () => toast.error('AEO audit failed'),
   });
 }
 
@@ -105,7 +112,9 @@ export function useDeleteAudit() {
     mutationFn: (id: string) => api.delete(`/audits/${id}`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['audits'] });
+      toast.success('Audit deleted');
     },
+    onError: () => toast.error('Failed to delete audit'),
   });
 }
 

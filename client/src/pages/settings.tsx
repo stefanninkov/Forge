@@ -1,16 +1,28 @@
-import { useState } from 'react';
+import { useState, type FormEvent } from 'react';
+import { toast } from 'sonner';
 import { PageHeader } from '@/components/layout/page-header';
 import { usePageTitle } from '@/hooks/use-page-title';
+import { useAuth } from '@/hooks/use-auth';
+import { api, ApiError } from '@/lib/api';
 import {
   useIntegrations,
   useConnectIntegration,
   useDisconnectIntegration,
 } from '@/hooks/use-integrations';
-import { Layers, Brain, Globe, Check, X, Loader2 } from 'lucide-react';
+import { Layers, Brain, Globe, Check, X, Loader2, User, Plug } from 'lucide-react';
 import type { Provider } from '@/types/integration';
 import type { ComponentType } from 'react';
 import type { LucideProps } from 'lucide-react';
 
+/* ─── Tab types ─── */
+type SettingsTab = 'account' | 'integrations';
+
+const TABS: { key: SettingsTab; label: string; icon: ComponentType<LucideProps> }[] = [
+  { key: 'account', label: 'Account', icon: User },
+  { key: 'integrations', label: 'Integrations', icon: Plug },
+];
+
+/* ─── Integration config ─── */
 interface ProviderConfig {
   provider: Provider;
   name: string;
@@ -51,6 +63,226 @@ const PROVIDERS: ProviderConfig[] = [
   },
 ];
 
+/* ─── Account Tab ─── */
+function AccountSection() {
+  const { user } = useAuth();
+  const [name, setName] = useState(user?.name ?? '');
+  const [email, setEmail] = useState(user?.email ?? '');
+  const [saving, setSaving] = useState(false);
+
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [changingPw, setChangingPw] = useState(false);
+
+  async function handleUpdateAccount(e: FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await api.put('/auth/account', { name, email });
+      toast.success('Account updated');
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : 'Failed to update account');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleChangePassword(e: FormEvent) {
+    e.preventDefault();
+    setChangingPw(true);
+    try {
+      await api.put('/auth/password', { currentPassword, newPassword });
+      toast.success('Password changed');
+      setCurrentPassword('');
+      setNewPassword('');
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : 'Failed to change password');
+    } finally {
+      setChangingPw(false);
+    }
+  }
+
+  const inputStyle = {
+    width: '100%',
+    height: 36,
+    padding: '0 12px',
+    border: '1px solid var(--border-default)',
+    borderRadius: 'var(--radius-md)',
+    fontSize: 'var(--text-base)',
+    color: 'var(--text-primary)',
+    backgroundColor: 'var(--bg-primary)',
+    outline: 'none',
+    fontFamily: 'var(--font-sans)',
+  };
+
+  const labelStyle = {
+    display: 'block' as const,
+    fontSize: 'var(--text-sm)',
+    fontWeight: 500,
+    color: 'var(--text-secondary)',
+    marginBottom: 6,
+  };
+
+  return (
+    <div className="flex flex-col" style={{ gap: 32 }}>
+      {/* Profile */}
+      <div>
+        <h3
+          style={{
+            fontSize: 'var(--text-base)',
+            fontWeight: 600,
+            color: 'var(--text-primary)',
+            marginBottom: 16,
+          }}
+        >
+          Profile
+        </h3>
+        <form onSubmit={handleUpdateAccount}>
+          <div className="flex flex-col" style={{ gap: 12 }}>
+            <div>
+              <label style={labelStyle}>Name</label>
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                style={inputStyle}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--accent)';
+                  e.currentTarget.style.boxShadow = '0 0 0 2px var(--accent-subtle)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--border-default)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>Email</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                style={inputStyle}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--accent)';
+                  e.currentTarget.style.boxShadow = '0 0 0 2px var(--accent-subtle)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--border-default)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              />
+            </div>
+            <div>
+              <button
+                type="submit"
+                disabled={saving}
+                style={{
+                  height: 36,
+                  padding: '0 16px',
+                  borderRadius: 'var(--radius-md)',
+                  border: 'none',
+                  backgroundColor: 'var(--accent)',
+                  color: '#fff',
+                  fontSize: 'var(--text-sm)',
+                  fontWeight: 500,
+                  cursor: saving ? 'not-allowed' : 'pointer',
+                  opacity: saving ? 0.6 : 1,
+                  fontFamily: 'var(--font-sans)',
+                }}
+              >
+                {saving ? 'Saving...' : 'Save changes'}
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      {/* Divider */}
+      <div style={{ borderTop: '1px solid var(--border-subtle)' }} />
+
+      {/* Change password */}
+      <div>
+        <h3
+          style={{
+            fontSize: 'var(--text-base)',
+            fontWeight: 600,
+            color: 'var(--text-primary)',
+            marginBottom: 16,
+          }}
+        >
+          Change password
+        </h3>
+        <form onSubmit={handleChangePassword}>
+          <div className="flex flex-col" style={{ gap: 12 }}>
+            <div>
+              <label style={labelStyle}>Current password</label>
+              <input
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                required
+                style={inputStyle}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--accent)';
+                  e.currentTarget.style.boxShadow = '0 0 0 2px var(--accent-subtle)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--border-default)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>New password</label>
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                required
+                minLength={8}
+                style={inputStyle}
+                onFocus={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--accent)';
+                  e.currentTarget.style.boxShadow = '0 0 0 2px var(--accent-subtle)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.borderColor = 'var(--border-default)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+              />
+              <p style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)', marginTop: 4 }}>
+                Must be at least 8 characters.
+              </p>
+            </div>
+            <div>
+              <button
+                type="submit"
+                disabled={changingPw || !currentPassword || newPassword.length < 8}
+                style={{
+                  height: 36,
+                  padding: '0 16px',
+                  borderRadius: 'var(--radius-md)',
+                  border: 'none',
+                  backgroundColor: 'var(--accent)',
+                  color: '#fff',
+                  fontSize: 'var(--text-sm)',
+                  fontWeight: 500,
+                  cursor: changingPw ? 'not-allowed' : 'pointer',
+                  opacity: changingPw || !currentPassword || newPassword.length < 8 ? 0.5 : 1,
+                  fontFamily: 'var(--font-sans)',
+                }}
+              >
+                {changingPw ? 'Changing...' : 'Change password'}
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Integration Card ─── */
 function IntegrationCard({ config }: { config: ProviderConfig }) {
   const { data: integrations } = useIntegrations();
   const connectMutation = useConnectIntegration();
@@ -151,8 +383,8 @@ function IntegrationCard({ config }: { config: ProviderConfig }) {
             opacity: isLoading ? 0.6 : 1,
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.borderColor = 'var(--status-error)';
-            e.currentTarget.style.color = 'var(--status-error)';
+            e.currentTarget.style.borderColor = 'var(--error)';
+            e.currentTarget.style.color = 'var(--error)';
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.borderColor = 'var(--border-default)';
@@ -241,11 +473,6 @@ function IntegrationCard({ config }: { config: ProviderConfig }) {
           <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)' }}>
             {config.helpText}
           </div>
-          {connectMutation.isError && (
-            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--status-error)' }}>
-              {connectMutation.error?.message ?? 'Failed to connect'}
-            </div>
-          )}
         </div>
       ) : (
         <button
@@ -275,33 +502,74 @@ function IntegrationCard({ config }: { config: ProviderConfig }) {
   );
 }
 
+/* ─── Settings Page ─── */
 export default function SettingsPage() {
   usePageTitle('Settings');
+  const [activeTab, setActiveTab] = useState<SettingsTab>('account');
+
   return (
     <div>
       <PageHeader
         title="Settings"
-        description="Manage your integrations and preferences."
+        description="Manage your account and integrations."
       />
 
       <div style={{ padding: '0 24px 24px' }}>
         <div style={{ maxWidth: 640 }}>
-          <h3
-            className="font-medium"
+          {/* Tabs */}
+          <div
+            className="flex"
             style={{
-              fontSize: 'var(--text-base)',
-              color: 'var(--text-primary)',
-              marginBottom: 16,
+              gap: 0,
+              borderBottom: '1px solid var(--border-default)',
+              marginBottom: 24,
             }}
           >
-            Integrations
-          </h3>
-
-          <div className="flex flex-col" style={{ gap: 12 }}>
-            {PROVIDERS.map((config) => (
-              <IntegrationCard key={config.provider} config={config} />
-            ))}
+            {TABS.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.key;
+              return (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveTab(tab.key)}
+                  className="flex items-center"
+                  style={{
+                    height: 40,
+                    padding: '0 16px',
+                    gap: 6,
+                    border: 'none',
+                    borderBottom: isActive ? '2px solid var(--accent)' : '2px solid transparent',
+                    backgroundColor: 'transparent',
+                    color: isActive ? 'var(--text-primary)' : 'var(--text-secondary)',
+                    fontSize: 'var(--text-sm)',
+                    fontWeight: isActive ? 500 : 400,
+                    cursor: 'pointer',
+                    fontFamily: 'var(--font-sans)',
+                    transition: 'color var(--duration-fast)',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isActive) e.currentTarget.style.color = 'var(--text-primary)';
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isActive) e.currentTarget.style.color = 'var(--text-secondary)';
+                  }}
+                >
+                  <Icon size={14} />
+                  {tab.label}
+                </button>
+              );
+            })}
           </div>
+
+          {/* Tab content */}
+          {activeTab === 'account' && <AccountSection />}
+          {activeTab === 'integrations' && (
+            <div className="flex flex-col" style={{ gap: 12 }}>
+              {PROVIDERS.map((config) => (
+                <IntegrationCard key={config.provider} config={config} />
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

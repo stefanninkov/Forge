@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AppLayout } from '@/components/layout/app-layout';
+import { Toaster } from '@/components/ui/toaster';
 import { useAuth } from '@/hooks/use-auth';
 import { lazy, Suspense, useEffect, type ReactNode } from 'react';
 
@@ -123,6 +124,7 @@ export default function App() {
           </Routes>
         </Suspense>
       </BrowserRouter>
+      <Toaster />
     </QueryClientProvider>
   );
 }

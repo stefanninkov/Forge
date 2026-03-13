@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import type { TemplateSummary, Template, TemplateFilters } from '@/types/template';
 
@@ -52,7 +53,11 @@ export function useCreateTemplate() {
       const res = await api.post('/templates', data);
       return (res as { data: Template }).data;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: KEYS.all }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: KEYS.all });
+      toast.success('Template created');
+    },
+    onError: () => toast.error('Failed to create template'),
   });
 }
 
@@ -63,7 +68,11 @@ export function useUpdateTemplate() {
       const res = await api.put(`/templates/${id}`, data);
       return (res as { data: Template }).data;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: KEYS.all }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: KEYS.all });
+      toast.success('Template updated');
+    },
+    onError: () => toast.error('Failed to update template'),
   });
 }
 
@@ -73,7 +82,11 @@ export function useDeleteTemplate() {
     mutationFn: async (id: string) => {
       await api.delete(`/templates/${id}`);
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: KEYS.all }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: KEYS.all });
+      toast.success('Template deleted');
+    },
+    onError: () => toast.error('Failed to delete template'),
   });
 }
 
@@ -84,7 +97,11 @@ export function useDuplicateTemplate() {
       const res = await api.post(`/templates/${id}/duplicate`, {});
       return (res as { data: Template }).data;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: KEYS.all }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: KEYS.all });
+      toast.success('Template duplicated');
+    },
+    onError: () => toast.error('Failed to duplicate template'),
   });
 }
 
@@ -95,6 +112,10 @@ export function useSeedTemplates() {
       const res = await api.post('/templates/seed', {});
       return res as { data: { seeded: boolean; count: number } };
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: KEYS.all }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: KEYS.all });
+      toast.success('System templates seeded');
+    },
+    onError: () => toast.error('Failed to seed templates'),
   });
 }
