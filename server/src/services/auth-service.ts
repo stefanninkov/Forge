@@ -128,7 +128,7 @@ export async function login(email: string, password: string): Promise<AuthResult
 
 export async function refreshAccessToken(
   refreshTokenValue: string,
-): Promise<AuthTokens> {
+): Promise<AuthResult> {
   let payload: RefreshTokenPayload;
   try {
     payload = jwt.verify(refreshTokenValue, env.JWT_REFRESH_SECRET) as RefreshTokenPayload;
@@ -166,7 +166,12 @@ export async function refreshAccessToken(
     throw new UnauthorizedError('User not found');
   }
 
-  return generateTokens(user);
+  const tokens = await generateTokens(user);
+
+  return {
+    user: { id: user.id, email: user.email, name: user.name },
+    ...tokens,
+  };
 }
 
 export async function findOrCreateGoogleUser(profile: {
