@@ -13,6 +13,7 @@ import {
   auditIdSchema,
   alertIdSchema,
 } from './schemas.js';
+import { logActivity } from '../../utils/activity-logger.js';
 
 export async function auditRoutes(app: FastifyInstance) {
   app.addHook('preHandler', requireAuth);
@@ -26,6 +27,7 @@ export async function auditRoutes(app: FastifyInstance) {
     if (!body.success) throw new ValidationError(body.error.flatten().fieldErrors);
 
     const audit = await runSpeedAudit(params.data.id, body.data.url, request.user.userId);
+    logActivity({ userId: request.user.userId, projectId: params.data.id, action: 'AUDIT_RUN', details: { type: 'speed', url: body.data.url } });
     return reply.status(201).send({ data: audit });
   });
 
@@ -38,6 +40,7 @@ export async function auditRoutes(app: FastifyInstance) {
     if (!body.success) throw new ValidationError(body.error.flatten().fieldErrors);
 
     const audit = await runSeoAudit(params.data.id, body.data.url, request.user.userId);
+    logActivity({ userId: request.user.userId, projectId: params.data.id, action: 'AUDIT_RUN', details: { type: 'seo', url: body.data.url } });
     return reply.status(201).send({ data: audit });
   });
 
@@ -50,6 +53,7 @@ export async function auditRoutes(app: FastifyInstance) {
     if (!body.success) throw new ValidationError(body.error.flatten().fieldErrors);
 
     const audit = await runAeoAudit(params.data.id, body.data.url, request.user.userId);
+    logActivity({ userId: request.user.userId, projectId: params.data.id, action: 'AUDIT_RUN', details: { type: 'aeo', url: body.data.url } });
     return reply.status(201).send({ data: audit });
   });
 

@@ -1,4 +1,5 @@
-import { useLocation, Link } from 'react-router-dom';
+import { useState } from 'react';
+import { useLocation, Link, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   Settings2,
@@ -13,15 +14,23 @@ import {
   HeartPulse,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Sun,
   Moon,
   LogOut,
   Settings,
+  BookOpen,
+  FolderOpen,
+  Check,
+  Wifi,
+  WifiOff,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/hooks/use-theme';
 import { useSidebar } from '@/hooks/use-sidebar';
 import { useAuth } from '@/hooks/use-auth';
+import { useProjects } from '@/hooks/use-projects';
+import { useActiveProject } from '@/hooks/use-active-project';
 import type { ComponentType } from 'react';
 import type { LucideProps } from 'lucide-react';
 
@@ -72,9 +81,20 @@ const NAV_SECTIONS: NavSection[] = [
 
 export function Sidebar() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
   const { collapsed, toggleCollapsed } = useSidebar();
   const { user, clearAuth } = useAuth();
+  const { data: projects } = useProjects();
+  const { activeProjectId, setActiveProjectId } = useActiveProject();
+  const [projectMenuOpen, setProjectMenuOpen] = useState(false);
+
+  const activeProject = projects?.find((p) => p.id === activeProjectId) ?? projects?.[0] ?? null;
+
+  // Auto-set active project if none selected
+  if (projects && projects.length > 0 && !activeProjectId) {
+    setActiveProjectId(projects[0].id);
+  }
 
   const isActive = (path: string) => {
     if (path === '/') return location.pathname === '/';
@@ -196,6 +216,230 @@ export function Sidebar() {
         )}
       </div>
 
+      {/* Active project selector */}
+      {!collapsed && (
+        <div
+          style={{
+            padding: '8px 12px',
+            borderBottom: '1px solid var(--border-default)',
+            position: 'relative',
+          }}
+        >
+          <button
+            onClick={() => setProjectMenuOpen(!projectMenuOpen)}
+            className="flex items-center w-full cursor-pointer border-none bg-transparent"
+            style={{
+              padding: '6px 8px',
+              borderRadius: 'var(--radius-md)',
+              gap: 8,
+              transition: 'background-color var(--duration-fast)',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--surface-hover)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'transparent';
+            }}
+          >
+            <div
+              className="flex items-center justify-center"
+              style={{
+                width: 24,
+                height: 24,
+                borderRadius: 'var(--radius-sm)',
+                backgroundColor: activeProject ? 'var(--accent-subtle)' : 'var(--surface-hover)',
+                flexShrink: 0,
+              }}
+            >
+              <FolderOpen size={13} style={{ color: activeProject ? 'var(--accent)' : 'var(--text-tertiary)' }} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0, textAlign: 'left' }}>
+              <div
+                style={{
+                  fontSize: 'var(--text-xs)',
+                  color: 'var(--text-tertiary)',
+                  lineHeight: 1,
+                  marginBottom: 2,
+                }}
+              >
+                Project
+              </div>
+              <div
+                style={{
+                  fontSize: 'var(--text-sm)',
+                  fontWeight: 500,
+                  color: 'var(--text-primary)',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  lineHeight: 1.2,
+                }}
+              >
+                {activeProject?.name ?? 'No project'}
+              </div>
+            </div>
+            <ChevronDown
+              size={12}
+              style={{
+                color: 'var(--text-tertiary)',
+                flexShrink: 0,
+                transform: projectMenuOpen ? 'rotate(180deg)' : undefined,
+                transition: 'transform var(--duration-fast)',
+              }}
+            />
+          </button>
+
+          {/* Webflow connection status */}
+          {activeProject && (
+            <div
+              className="flex items-center"
+              style={{
+                padding: '2px 8px',
+                gap: 6,
+                fontSize: 'var(--text-xs)',
+                color: 'var(--text-tertiary)',
+              }}
+            >
+              {activeProject.webflowSiteId ? (
+                <>
+                  <Wifi size={10} style={{ color: 'var(--accent)' }} />
+                  <span style={{ color: 'var(--accent)' }}>Webflow connected</span>
+                </>
+              ) : (
+                <>
+                  <WifiOff size={10} />
+                  <span>No Webflow site</span>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Project dropdown */}
+          {projectMenuOpen && (
+            <>
+              <div
+                style={{ position: 'fixed', inset: 0, zIndex: 40 }}
+                onClick={() => setProjectMenuOpen(false)}
+              />
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '100%',
+                  left: 12,
+                  right: 12,
+                  backgroundColor: 'var(--bg-elevated)',
+                  border: '1px solid var(--border-default)',
+                  borderRadius: 'var(--radius-md)',
+                  boxShadow: 'var(--shadow-elevated)',
+                  zIndex: 50,
+                  overflow: 'hidden',
+                  padding: '4px 0',
+                  maxHeight: 280,
+                  overflowY: 'auto',
+                }}
+              >
+                {projects?.map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => {
+                      setActiveProjectId(p.id);
+                      setProjectMenuOpen(false);
+                    }}
+                    className="flex items-center w-full border-none bg-transparent cursor-pointer"
+                    style={{
+                      height: 34,
+                      padding: '0 10px',
+                      gap: 8,
+                      fontSize: 'var(--text-sm)',
+                      color: p.id === activeProject?.id ? 'var(--accent-text)' : 'var(--text-secondary)',
+                      fontFamily: 'var(--font-sans)',
+                      fontWeight: p.id === activeProject?.id ? 500 : 400,
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = 'var(--surface-hover)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }}
+                  >
+                    {p.id === activeProject?.id ? (
+                      <Check size={12} style={{ flexShrink: 0 }} />
+                    ) : (
+                      <span style={{ width: 12, flexShrink: 0 }} />
+                    )}
+                    <span
+                      style={{
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {p.name}
+                    </span>
+                  </button>
+                ))}
+                {(!projects || projects.length === 0) && (
+                  <div style={{ padding: '8px 10px', fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)' }}>
+                    No projects yet
+                  </div>
+                )}
+                <div style={{ borderTop: '1px solid var(--border-default)', margin: '4px 0' }} />
+                <button
+                  onClick={() => {
+                    setProjectMenuOpen(false);
+                    navigate('/');
+                  }}
+                  className="flex items-center w-full border-none bg-transparent cursor-pointer"
+                  style={{
+                    height: 34,
+                    padding: '0 10px',
+                    gap: 8,
+                    fontSize: 'var(--text-sm)',
+                    color: 'var(--text-tertiary)',
+                    fontFamily: 'var(--font-sans)',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = 'var(--surface-hover)';
+                    e.currentTarget.style.color = 'var(--text-primary)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                    e.currentTarget.style.color = 'var(--text-tertiary)';
+                  }}
+                >
+                  <LayoutDashboard size={12} style={{ flexShrink: 0 }} />
+                  <span>All projects</span>
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Collapsed project indicator */}
+      {collapsed && activeProject && (
+        <div
+          className="flex items-center justify-center"
+          style={{
+            padding: '8px 0',
+            borderBottom: '1px solid var(--border-default)',
+          }}
+          title={`Project: ${activeProject.name}`}
+        >
+          <div
+            className="flex items-center justify-center"
+            style={{
+              width: 28,
+              height: 28,
+              borderRadius: 'var(--radius-md)',
+              backgroundColor: 'var(--accent-subtle)',
+            }}
+          >
+            <FolderOpen size={14} style={{ color: 'var(--accent)' }} />
+          </div>
+        </div>
+      )}
+
       {/* Navigation */}
       <nav
         className="flex-1 overflow-y-auto overflow-x-hidden"
@@ -304,6 +548,45 @@ export function Sidebar() {
             <ChevronRight size={16} />
           </button>
         )}
+
+        {/* Guide */}
+        <Link
+          to="/guide"
+          className={cn(
+            'flex items-center no-underline',
+            collapsed && 'justify-center',
+          )}
+          style={{
+            height: 36,
+            padding: collapsed ? '0 8px' : '0 12px',
+            borderRadius: 'var(--radius-md)',
+            fontSize: 'var(--text-sm)',
+            fontWeight: 500,
+            gap: 10,
+            color: isActive('/guide')
+              ? 'var(--accent-text)'
+              : 'var(--text-secondary)',
+            backgroundColor: isActive('/guide')
+              ? 'var(--accent-subtle)'
+              : 'transparent',
+          }}
+          onMouseEnter={(e) => {
+            if (!isActive('/guide')) {
+              e.currentTarget.style.backgroundColor = 'var(--surface-hover)';
+              e.currentTarget.style.color = 'var(--text-primary)';
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (!isActive('/guide')) {
+              e.currentTarget.style.backgroundColor = 'transparent';
+              e.currentTarget.style.color = 'var(--text-secondary)';
+            }
+          }}
+          title={collapsed ? 'Guide' : undefined}
+        >
+          <BookOpen size={18} style={{ flexShrink: 0 }} />
+          {!collapsed && <span>Guide</span>}
+        </Link>
 
         {/* Settings */}
         <Link

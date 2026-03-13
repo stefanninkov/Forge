@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
-import { X, Copy, Zap, Loader2 } from 'lucide-react';
+import { X, Copy, Zap, Loader2, Upload } from 'lucide-react';
+import { toast } from 'sonner';
 import { useTemplate } from '@/hooks/use-templates';
 import type { TemplateNode } from '@/types/template';
 
@@ -291,6 +292,12 @@ export function TemplateDetailPanel({ templateId, open, onClose, onDuplicate }: 
             )}
             <button
               className="flex items-center cursor-pointer"
+              onClick={() => {
+                toast.info('Connect Webflow Designer to push templates', {
+                  description: 'Open your project in the Webflow Designer with the MCP Companion App running, then connect in Settings → Integrations.',
+                  duration: 6000,
+                });
+              }}
               style={{
                 gap: 6,
                 height: 32,
@@ -303,10 +310,14 @@ export function TemplateDetailPanel({ templateId, open, onClose, onDuplicate }: 
                 fontWeight: 500,
                 fontFamily: 'var(--font-sans)',
                 marginLeft: 'auto',
-                opacity: 0.5,
+                transition: 'background-color var(--duration-fast)',
               }}
-              disabled
-              title="Requires MCP connection"
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--accent-hover)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--accent)';
+              }}
             >
               Push to Webflow
             </button>

@@ -17,6 +17,7 @@ const ActivityPage = lazy(() => import('@/pages/activity'));
 const ReportsPage = lazy(() => import('@/pages/reports'));
 const HealthPage = lazy(() => import('@/pages/health'));
 const SettingsPage = lazy(() => import('@/pages/settings'));
+const GuidePage = lazy(() => import('@/pages/guide'));
 const LoginPage = lazy(() => import('@/pages/login'));
 const RegisterPage = lazy(() => import('@/pages/register'));
 
@@ -123,6 +124,7 @@ export default function App() {
               <Route path="reports" element={<ReportsPage />} />
               <Route path="health" element={<HealthPage />} />
               <Route path="settings" element={<SettingsPage />} />
+              <Route path="guide" element={<GuidePage />} />
             </Route>
 
             {/* Catch-all */}

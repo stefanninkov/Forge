@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Sidebar } from '@/components/layout/sidebar';
 import { CommandPalette } from '@/components/shared/command-palette';
+import { StatusBar } from '@/components/shared/status-bar';
 
 export function AppLayout() {
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
@@ -27,12 +28,15 @@ export function AppLayout() {
   return (
     <div className="flex" style={{ height: '100vh' }}>
       <Sidebar />
-      <main
-        className="flex-1 overflow-y-auto"
-        style={{ backgroundColor: 'var(--bg-primary)' }}
-      >
-        <Outlet />
-      </main>
+      <div className="flex flex-col flex-1" style={{ minWidth: 0 }}>
+        <main
+          className="flex-1 overflow-y-auto"
+          style={{ backgroundColor: 'var(--bg-primary)' }}
+        >
+          <Outlet />
+        </main>
+        <StatusBar />
+      </div>
       <CommandPalette
         open={commandPaletteOpen}
         onClose={() => setCommandPaletteOpen(false)}

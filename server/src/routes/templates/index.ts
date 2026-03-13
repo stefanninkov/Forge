@@ -2,6 +2,7 @@ import { FastifyInstance } from 'fastify';
 import { requireAuth } from '../../middleware/auth.js';
 import * as templateService from '../../services/template-service.js';
 import { ValidationError } from '../../utils/errors.js';
+import { logActivity } from '../../utils/activity-logger.js';
 import {
   templateFiltersSchema,
   createTemplateSchema,
@@ -36,6 +37,7 @@ export async function templateRoutes(app: FastifyInstance) {
     if (!body.success) throw new ValidationError(body.error.flatten().fieldErrors);
 
     const template = await templateService.createTemplate(request.user.userId, body.data);
+    await logActivity({ userId: request.user.userId, action: 'TEMPLATE_CREATED', details: { name: template.name, category: template.category } });
     return reply.status(201).send({ data: template });
   });
 

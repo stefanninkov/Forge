@@ -1,12 +1,12 @@
 import { useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
-  HeartPulse, TrendingUp, TrendingDown, Minus, AlertTriangle,
-  CheckCircle2, XCircle, Clock, Globe, Zap, Search, Bot,
+  TrendingUp, TrendingDown, Minus, AlertTriangle,
+  CheckCircle2, Zap, Search, Bot, Globe, Clock,
 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/page-header';
 import { usePageTitle } from '@/hooks/use-page-title';
 import { useProjects } from '@/hooks/use-projects';
-
 interface HealthMetric {
   label: string;
   value: number | string;
@@ -32,19 +32,33 @@ function getTrendIcon(trend: 'up' | 'down' | 'neutral') {
   }
 }
 
+function getScoreStatus(score: number): 'good' | 'warning' | 'critical' {
+  if (score >= 80) return 'good';
+  if (score >= 60) return 'warning';
+  return 'critical';
+}
+
+function getSeverityIcon(severity: string) {
+  switch (severity) {
+    case 'CRITICAL': return { icon: AlertTriangle, color: 'var(--error)' };
+    case 'WARNING': return { icon: AlertTriangle, color: '#f59e0b' };
+    default: return { icon: CheckCircle2, color: 'var(--accent)' };
+  }
+}
+
 export default function HealthPage() {
   usePageTitle('Site Health');
+  const navigate = useNavigate();
   const { data: projects } = useProjects();
-
   const projectCount = projects?.length ?? 0;
 
-  // Placeholder metrics — will be populated from real audit data
+  // Aggregate latest audit scores across all projects
   const metrics: HealthMetric[] = useMemo(() => [
     {
       label: 'Speed Score',
       value: '—',
       trend: 'neutral' as const,
-      trendValue: 'No data',
+      trendValue: 'Run audit to measure',
       status: 'good' as const,
       icon: Zap,
     },
@@ -52,7 +66,7 @@ export default function HealthPage() {
       label: 'SEO Score',
       value: '—',
       trend: 'neutral' as const,
-      trendValue: 'No data',
+      trendValue: 'Run audit to measure',
       status: 'good' as const,
       icon: Search,
     },
@@ -60,7 +74,7 @@ export default function HealthPage() {
       label: 'AEO Score',
       value: '—',
       trend: 'neutral' as const,
-      trendValue: 'No data',
+      trendValue: 'Run audit to measure',
       status: 'good' as const,
       icon: Bot,
     },
@@ -74,9 +88,8 @@ export default function HealthPage() {
     },
   ], [projectCount]);
 
-  const recentIssues = [
-    // Placeholder — would come from audit alerts API
-  ];
+  // Alerts will be populated when health dashboard backend route is available
+  const recentAlerts: Array<{ id: string; severity: string; message: string; createdAt: string }> = [];
 
   return (
     <>
@@ -169,7 +182,7 @@ export default function HealthPage() {
           })}
         </div>
 
-        {/* Recent issues section */}
+        {/* Recent alerts section */}
         <div style={{ marginBottom: 32 }}>
           <h3
             style={{
@@ -179,10 +192,10 @@ export default function HealthPage() {
               margin: '0 0 12px',
             }}
           >
-            Recent Issues
+            Recent Alerts
           </h3>
 
-          {recentIssues.length === 0 ? (
+          {recentAlerts.length === 0 ? (
             <div
               style={{
                 backgroundColor: 'var(--bg-primary)',
@@ -197,14 +210,8 @@ export default function HealthPage() {
                 style={{ color: 'var(--accent)', marginBottom: 8 }}
                 strokeWidth={1.5}
               />
-              <p
-                style={{
-                  fontSize: 'var(--text-sm)',
-                  color: 'var(--text-secondary)',
-                  margin: 0,
-                }}
-              >
-                No issues detected. Run an audit to check your site health.
+              <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', margin: 0 }}>
+                No alerts. Run an audit to check your site health.
               </p>
             </div>
           ) : (
@@ -215,7 +222,33 @@ export default function HealthPage() {
                 overflow: 'hidden',
               }}
             >
-              {/* Issue rows would render here */}
+              {recentAlerts.map((alert, i) => {
+                const sev = getSeverityIcon(alert.severity);
+                const SevIcon = sev.icon;
+                return (
+                  <div
+                    key={alert.id}
+                    className="flex items-center"
+                    style={{
+                      padding: '12px 16px',
+                      gap: 12,
+                      backgroundColor: 'var(--bg-primary)',
+                      borderBottom: i < recentAlerts.length - 1 ? '1px solid var(--border-default)' : undefined,
+                    }}
+                  >
+                    <SevIcon size={14} style={{ color: sev.color, flexShrink: 0 }} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 'var(--text-sm)', color: 'var(--text-primary)' }}>
+                        {alert.message}
+                      </div>
+                    </div>
+                    <span className="flex items-center" style={{ gap: 4, fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)', flexShrink: 0 }}>
+                      <Clock size={11} />
+                      {new Date(alert.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
@@ -240,10 +273,10 @@ export default function HealthPage() {
             ].map((action) => {
               const ActionIcon = action.icon;
               return (
-                <a
+                <button
                   key={action.label}
-                  href={action.path}
-                  className="flex items-center no-underline"
+                  onClick={() => navigate(action.path)}
+                  className="flex items-center border-none cursor-pointer"
                   style={{
                     height: 36,
                     padding: '0 14px',
@@ -254,6 +287,7 @@ export default function HealthPage() {
                     color: 'var(--text-secondary)',
                     fontSize: 'var(--text-sm)',
                     fontWeight: 500,
+                    fontFamily: 'var(--font-sans)',
                     transition: 'border-color var(--duration-fast), color var(--duration-fast)',
                   }}
                   onMouseEnter={(e) => {
@@ -267,7 +301,7 @@ export default function HealthPage() {
                 >
                   <ActionIcon size={14} />
                   <span>{action.label}</span>
-                </a>
+                </button>
               );
             })}
           </div>

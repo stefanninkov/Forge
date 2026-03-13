@@ -3,6 +3,7 @@ import { requireAuth } from '../../middleware/auth.js';
 import { createProjectSchema, updateProjectSchema, projectIdSchema } from './schemas.js';
 import * as projectService from '../../services/project-service.js';
 import { ValidationError } from '../../utils/errors.js';
+import { logActivity } from '../../utils/activity-logger.js';
 
 export async function projectRoutes(app: FastifyInstance) {
   // All project routes require authentication
@@ -33,6 +34,7 @@ export async function projectRoutes(app: FastifyInstance) {
     }
 
     const project = await projectService.createProject(request.user.userId, parsed.data);
+    await logActivity({ userId: request.user.userId, projectId: project.id, action: 'PROJECT_CREATED', details: { name: project.name } });
     return reply.status(201).send({ data: project });
   });
 
@@ -53,6 +55,7 @@ export async function projectRoutes(app: FastifyInstance) {
       request.user.userId,
       parsed.data,
     );
+    await logActivity({ userId: request.user.userId, projectId: project.id, action: 'PROJECT_UPDATED', details: parsed.data });
     return reply.send({ data: project });
   });
 
@@ -63,6 +66,7 @@ export async function projectRoutes(app: FastifyInstance) {
       throw new ValidationError(params.error.flatten().fieldErrors);
     }
 
+    await logActivity({ userId: request.user.userId, projectId: params.data.id, action: 'PROJECT_DELETED' });
     await projectService.deleteProject(params.data.id, request.user.userId);
     return reply.status(204).send();
   });

@@ -14,6 +14,13 @@ import { templateRoutes } from './routes/templates/index.js';
 import { auditRoutes } from './routes/audits/index.js';
 import { activityRoutes } from './routes/activity/index.js';
 import { favoriteRoutes } from './routes/favorites/index.js';
+import { reportRoutes } from './routes/reports/index.js';
+import { settingsRoutes } from './routes/settings/index.js';
+import { sectionRoutes } from './routes/sections/index.js';
+import { scalingRoutes } from './routes/scaling/index.js';
+import { healthDashboardRoutes } from './routes/health-dashboard/index.js';
+import { exportRoutes } from './routes/export/index.js';
+import { mcpRoutes } from './routes/mcp/index.js';
 
 const isDev = env.NODE_ENV === 'development';
 
@@ -55,6 +62,13 @@ async function start() {
   await app.register(auditRoutes, { prefix: '/api' });
   await app.register(activityRoutes, { prefix: '/api/activity' });
   await app.register(favoriteRoutes, { prefix: '/api/favorites' });
+  await app.register(reportRoutes, { prefix: '/api/reports' });
+  await app.register(settingsRoutes, { prefix: '/api/settings' });
+  await app.register(sectionRoutes, { prefix: '/api/sections' });
+  await app.register(scalingRoutes, { prefix: '/api/projects' });
+  await app.register(healthDashboardRoutes, { prefix: '/api/health-dashboard' });
+  await app.register(exportRoutes, { prefix: '/api/export' });
+  await app.register(mcpRoutes, { prefix: '/api/mcp' });
 
   // Health check
   app.get('/api/health', async () => {

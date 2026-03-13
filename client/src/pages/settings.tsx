@@ -13,7 +13,7 @@ import {
 import {
   Layers, Brain, Globe, Check, X, Loader2, User, Plug,
   Palette, Bell, Ruler, Keyboard, Database, Moon, Sun, Monitor,
-  Download, Trash2, ChevronDown,
+  Download, Trash2, ChevronDown, RotateCcw,
 } from 'lucide-react';
 import type { Provider } from '@/types/integration';
 import type { ComponentType } from 'react';
@@ -594,6 +594,45 @@ function AppearanceSection() {
         </p>
         <SettingToggle label="Start with sidebar collapsed" defaultChecked={false} />
       </div>
+
+      <div style={{ borderTop: '1px solid var(--border-subtle)' }} />
+
+      <div>
+        <h3 style={{ fontSize: 'var(--text-base)', fontWeight: 600, color: 'var(--text-primary)', marginBottom: 8 }}>
+          Onboarding
+        </h3>
+        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-tertiary)', marginBottom: 12 }}>
+          Reset the welcome dialog to see the getting-started walkthrough again on your next visit to the dashboard.
+        </p>
+        <button
+          onClick={() => {
+            localStorage.removeItem('forge-onboarded');
+            toast.success('Welcome dialog will appear on your next dashboard visit.');
+          }}
+          className="flex items-center cursor-pointer"
+          style={{
+            gap: 6,
+            height: 36,
+            padding: '0 16px',
+            border: '1px solid var(--border-default)',
+            borderRadius: 'var(--radius-md)',
+            backgroundColor: 'transparent',
+            fontSize: 'var(--text-sm)',
+            fontWeight: 500,
+            color: 'var(--text-secondary)',
+            fontFamily: 'var(--font-sans)',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = 'var(--surface-hover)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'transparent';
+          }}
+        >
+          <RotateCcw size={14} />
+          Reset welcome dialog
+        </button>
+      </div>
     </div>
   );
 }
@@ -808,7 +847,21 @@ function DataSection() {
             color: 'var(--text-secondary)', cursor: 'pointer',
             fontFamily: 'var(--font-sans)',
           }}
-          onClick={() => toast.info('Export feature coming soon.')}
+          onClick={async () => {
+            try {
+              const res = await api.get<{ data: Record<string, unknown> }>('/export');
+              const blob = new Blob([JSON.stringify(res.data, null, 2)], { type: 'application/json' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `forge-export-${new Date().toISOString().slice(0, 10)}.json`;
+              a.click();
+              URL.revokeObjectURL(url);
+              toast.success('Data exported successfully.');
+            } catch {
+              toast.error('Failed to export data.');
+            }
+          }}
         >
           <Download size={14} />
           Export all data

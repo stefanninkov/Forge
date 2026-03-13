@@ -352,8 +352,85 @@ Phase order from PLAN.md:
 #### Settings System (7 tabs)
 - Account, Appearance, Integrations, Notifications, Scaling, Shortcuts, Data
 
+#### Quality of Life Features
+- Favorites system: toggle star on project cards, backend CRUD routes (`/api/favorites`)
+- Activity Log page: full page with date-grouped timeline, action filter, pagination
+- Activity backend routes: `GET /api/activity` with action/project filters
+- Project type expanded: notes, scriptStatus, lastDeployedAt fields
+- Frontend hooks: `use-activity.ts`, `use-favorites.ts`
+
+#### New Pages
+- **Activity** (`/activity`) — Date-grouped activity timeline with filter dropdown
+- **Handoff Reports** (`/reports`) — Report list with empty state, create button, context menus
+- **Site Health** (`/health`) — Dashboard with metric cards, recent issues, quick actions
+
+#### Navigation Updates
+- Sidebar: Added Activity (Overview), Site Health (Optimize), Reports (new Deliver section)
+- Command Palette: Added Activity, Site Health, Reports navigation commands
+- Router: Added `/activity`, `/reports`, `/health` routes
+
+#### Backend Routes Added
+- `GET /api/activity` — Activity log with filtering & pagination
+- `GET /api/favorites` — List favorites with optional type filter
+- `GET /api/favorites/check` — Check if item is favorited
+- `POST /api/favorites` — Toggle favorite on/off
+
+#### Phase 7 Polish (2026-03-14)
+
+**Toast System** — Already integrated (sonner) across all mutations
+
+**Onboarding Flow**
+- Welcome dialog (`welcome-dialog.tsx`) with 3-step intro
+- Reset welcome dialog option in Settings → Appearance → Onboarding section
+- Uses `forge-onboarded` localStorage key
+
+**Account Settings**
+- Profile update (name/email) with `PUT /api/auth/account`
+- Change password with `PUT /api/auth/password`
+
+**Core Hooks Created**
+- `use-mcp-connection.ts` — Zustand store for MCP connection status (connected/disconnected/reconnecting)
+- `use-master-script-status.ts` — TanStack Query hook for master script + scaling status
+- `use-scaling-system.ts` — Per-project scaling config with px↔rem conversion helpers
+
+**Core Components Created**
+- `MCPGuard` — Wrapper that blocks children when MCP disconnected, shows reconnect UI
+- `StatusBar` — Bottom status bar showing MCP, master script, and scaling status (integrated into AppLayout)
+
+**Activity Logging Extended**
+- Added to audit routes (speed/seo/aeo) — `AUDIT_RUN` action with type + URL details
+- Added to sections routes — `SECTION_CAPTURED` action with name + capturedFrom details
+- Previously: projects (create/update/delete), templates (create)
+
+**Data Export Wired**
+- Settings → Data → Export button now calls `GET /api/export` and downloads JSON file
+
+**Guide Page**
+- `/guide` route with 6 main sections, 18 subsections
+- Left sidebar TOC navigation with URL search params
+- Sidebar link added (BookOpen icon)
+
+**Centralized Tooltips**
+- `client/src/content/tooltips.ts` — 80+ tooltip entries across animations, CSS, semantic HTML, scaling, master script, setup, units
+
+**Project Context**
+- Global active project store (`use-active-project.ts`) with localStorage persistence
+- Project switcher in sidebar (shows current project, dropdown to switch)
+- Project selector in Figma page header
+- Push to Webflow dialogs on both Figma and Templates pages
+
 ### Next Up
-- Build and deploy to production
-- Quality of Life features
-- Activity Log, Handoff Reports, Health Dashboard
-- In-App Guide System
+- Cross-module connections (event bus pattern)
+- AI enhancements (Claude API integrations for Figma, templates, audits)
+- Animation Engine upgrades (page transitions, performance profiler)
+- Figma Pipeline upgrade (enhanced import, component mapping)
+- Template Visual Preview (live HTML preview in iframe)
+- Section Capture frontend wiring to backend
+- Client Handoff Report PDF generation
+- Site Health monitoring with trend charts
+- Clipboard History Panel
+- Bulk Attribute Application
+- Template Diff View
+- Project Duplication
+- Project Notes (rich text)
+- Recently Visited tracking
