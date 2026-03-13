@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Plus, FolderOpen } from 'lucide-react';
 import { PageHeader } from '@/components/layout/page-header';
+import { usePageTitle } from '@/hooks/use-page-title';
 import { ProjectCard } from '@/components/shared/project-card';
 import { CreateProjectDialog } from '@/components/shared/create-project-dialog';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
@@ -8,6 +9,7 @@ import { useProjects, useCreateProject, useUpdateProject, useDeleteProject } fro
 import type { Project } from '@/types/project';
 
 export default function DashboardPage() {
+  usePageTitle('Dashboard');
   const { data: projects, isLoading, error } = useProjects();
   const createProject = useCreateProject();
   const updateProject = useUpdateProject();

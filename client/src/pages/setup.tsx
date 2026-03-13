@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ChevronDown, RotateCcw, Save, Upload, Trash2 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/page-header';
+import { usePageTitle } from '@/hooks/use-page-title';
 import { SetupCategorySection } from '@/components/modules/setup/setup-category-section';
 import { SaveProfileDialog } from '@/components/modules/setup/save-profile-dialog';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
@@ -17,6 +18,7 @@ import {
 } from '@/hooks/use-setup';
 
 export default function SetupPage() {
+  usePageTitle('Setup');
   const [searchParams] = useSearchParams();
   const queryProjectId = searchParams.get('project');
   const { data: projects, isLoading: projectsLoading } = useProjects();

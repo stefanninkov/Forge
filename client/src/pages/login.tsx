@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api, ApiError } from '@/lib/api';
 import { useAuth } from '@/hooks/use-auth';
+import { usePageTitle } from '@/hooks/use-page-title';
 
 interface AuthResponse {
   user: { id: string; email: string; name: string };
@@ -10,6 +11,7 @@ interface AuthResponse {
 }
 
 export default function LoginPage() {
+  usePageTitle('Log in');
   const navigate = useNavigate();
   const { setAuth } = useAuth();
   const [email, setEmail] = useState('');

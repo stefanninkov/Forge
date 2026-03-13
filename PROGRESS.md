@@ -207,12 +207,62 @@
 
 ---
 
-## Next: Phase 4+ (Pending)
+## Phase 4: Figma → Structure Translator — COMPLETE
+
+### Backend (completed)
+- `server/prisma/schema.prisma` — Added UserIntegration + FigmaAnalysis models
+  - Migration `20260313090021_add_integrations_and_figma_analyses` applied
+  - UserIntegration: per-user OAuth tokens and API keys (Figma, Anthropic, Webflow)
+  - FigmaAnalysis: stores parsed structure, audit results, AI suggestions
+- `server/src/services/integration-service.ts` — CRUD for user integrations
+  - listIntegrations, upsertIntegration, deleteIntegration, getAccessToken
+- `server/src/routes/integrations/` — REST endpoints for integrations
+  - GET/POST /api/integrations, DELETE /api/integrations/:provider
+- `server/src/services/figma-service.ts` — Full Figma pipeline
+  - extractFileKey: parse Figma URLs to get file key
+  - fetchFigmaFile: Figma REST API client with user's access token
+  - parseFigmaNode: converts Figma node tree to ParsedNode with Client-First class suggestions
+  - auditStructure: rule-based audit (naming, nesting depth, auto-layout, empty containers)
+  - getAiSuggestions: Claude API for intelligent class name suggestions
+  - analyzeFigmaFile: orchestrates full pipeline (verify project → get token → fetch → parse → audit → save)
+  - runAiSuggestions, updateAnalysis, getAnalysis, listAnalyses
+- `server/src/routes/figma/` — Route handlers + Zod schemas
+  - POST /api/figma/analyze, POST /api/figma/ai-suggest
+  - GET/PUT /api/figma/analyses/:id, POST /api/figma/analyses/:id/push (501 stub)
+
+### Frontend (completed)
+- `client/src/types/figma.ts` — ParsedNode, AuditIssue, FigmaAnalysis types
+- `client/src/types/integration.ts` — Provider, Integration types
+- `client/src/hooks/use-figma.ts` — useAnalyzeFigma, useAiSuggest, useFigmaAnalysis, useUpdateAnalysis
+- `client/src/hooks/use-integrations.ts` — useIntegrations, useConnectIntegration, useDisconnectIntegration
+- `client/src/pages/settings.tsx` — Settings page with integration cards (Figma, Anthropic, Webflow)
+- `client/src/pages/figma.tsx` — Full Figma Translator page
+  - URL input, page selector, AI Assist toggle, Push to Webflow stub
+  - Structure tree with editable class names, audit panel
+- `client/src/components/modules/figma/figma-input-panel.tsx` — URL input + analyze button
+- `client/src/components/modules/figma/structure-tree.tsx` — Tree container with element count
+- `client/src/components/modules/figma/tree-node.tsx` — Recursive tree node with inline editing
+- `client/src/components/modules/figma/audit-panel.tsx` — Collapsible severity-grouped audit panel
+- `client/src/components/layout/sidebar.tsx` — Added Settings link
+
+### Auth Persistence Fix
+- `client/src/hooks/use-auth.ts` — Added isRestoring state + restoreSession() for refresh token flow
+- `client/src/App.tsx` — restoreSession() on mount, ProtectedRoute handles isRestoring
+- `server/src/services/auth-service.ts` — refreshAccessToken returns user data for session restore
+
+### Deployment
+- Frontend deployed to GitHub Pages (gh-pages branch)
+- Backend deployed to Render (auto-deploy from main)
+- Auth persistence verified working on production
+
+---
+
+## Next: Phase 5+ (Pending)
 
 Phase order from PLAN.md:
 1. ~~Foundation~~ ✓
 2. ~~Project Setup Wizard~~ ✓
 3. ~~Animation Engine~~ ✓
-4. Figma → Structure Translator
+4. ~~Figma → Structure Translator~~ ✓
 5. Section Template Library
 6. Speed/SEO/AEO Audit Modules

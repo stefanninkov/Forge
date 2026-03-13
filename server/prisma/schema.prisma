@@ -123,6 +123,29 @@ model UserIntegration {
   @@map("user_integrations")
 }
 
+model Template {
+  id              String   @id @default(uuid()) @db.Uuid
+  userId          String?  @map("user_id") @db.Uuid
+  name            String
+  description     String?
+  category        String
+  type            TemplateType @default(SKELETON)
+  isPreset        Boolean  @default(false) @map("is_preset")
+  structure       Json
+  styles          Json?
+  animationAttrs  Json?    @map("animation_attrs")
+  tags            String[] @default([])
+  sourceProjectId String?  @map("source_project_id") @db.Uuid
+  isPublished     Boolean  @default(false) @map("is_published")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@index([category])
+  @@index([isPreset])
+  @@map("templates")
+}
+
 model FigmaAnalysis {
   id              String    @id @default(uuid()) @db.Uuid
   projectId       String    @map("project_id") @db.Uuid
@@ -157,6 +180,13 @@ enum SetupStatus {
   SKIPPED
 
   @@map("setup_status")
+}
+
+enum TemplateType {
+  SKELETON
+  STYLED
+
+  @@map("template_type")
 }
 
 enum AnimationEngine {

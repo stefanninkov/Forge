@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import { Code, Download, Loader2 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/page-header';
+import { usePageTitle } from '@/hooks/use-page-title';
 import { PresetCard } from '@/components/modules/animations/preset-card';
 import { PresetFiltersBar } from '@/components/modules/animations/preset-filters';
 import { ConfiguratorPanel } from '@/components/modules/animations/configurator-panel';
@@ -9,6 +10,7 @@ import { useAnimationPresets, useSeedPresets, useDeleteAnimationPreset } from '@
 import type { AnimationPreset, PresetFilters } from '@/types/animation';
 
 export default function AnimationsPage() {
+  usePageTitle('Animations');
   const [filters, setFilters] = useState<PresetFilters>({});
   const [selectedPreset, setSelectedPreset] = useState<AnimationPreset | null>(null);
   const [configuratorOpen, setConfiguratorOpen] = useState(false);

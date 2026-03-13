@@ -1,6 +1,8 @@
 import { PageHeader } from '@/components/layout/page-header';
+import { usePageTitle } from '@/hooks/use-page-title';
 
 export default function AeoPage() {
+  usePageTitle('AEO');
   return (
     <>
       <PageHeader

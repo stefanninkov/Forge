@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { PageHeader } from '@/components/layout/page-header';
+import { usePageTitle } from '@/hooks/use-page-title';
 import {
   useIntegrations,
   useConnectIntegration,
@@ -275,6 +276,7 @@ function IntegrationCard({ config }: { config: ProviderConfig }) {
 }
 
 export default function SettingsPage() {
+  usePageTitle('Settings');
   return (
     <div>
       <PageHeader

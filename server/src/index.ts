@@ -10,6 +10,7 @@ import { setupRoutes, setupProfileRoutes } from './routes/setup/index.js';
 import { animationRoutes, projectAnimationRoutes } from './routes/animations/index.js';
 import { integrationRoutes } from './routes/integrations/index.js';
 import { figmaRoutes } from './routes/figma/index.js';
+import { templateRoutes } from './routes/templates/index.js';
 
 const isDev = env.NODE_ENV === 'development';
 
@@ -47,6 +48,7 @@ async function start() {
   await app.register(projectAnimationRoutes, { prefix: '/api/projects' });
   await app.register(integrationRoutes, { prefix: '/api/integrations' });
   await app.register(figmaRoutes, { prefix: '/api/figma' });
+  await app.register(templateRoutes, { prefix: '/api/templates' });
 
   // Health check
   app.get('/api/health', async () => {

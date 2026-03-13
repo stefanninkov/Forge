@@ -1,6 +1,8 @@
 import { PageHeader } from '@/components/layout/page-header';
+import { usePageTitle } from '@/hooks/use-page-title';
 
 export default function SeoPage() {
+  usePageTitle('SEO Audit');
   return (
     <>
       <PageHeader

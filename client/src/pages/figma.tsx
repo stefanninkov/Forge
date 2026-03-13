@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { PageHeader } from '@/components/layout/page-header';
+import { usePageTitle } from '@/hooks/use-page-title';
 import { FigmaInputPanel } from '@/components/modules/figma/figma-input-panel';
 import { StructureTree } from '@/components/modules/figma/structure-tree';
 import { AuditPanel } from '@/components/modules/figma/audit-panel';
@@ -9,6 +10,7 @@ import { Brain, Loader2 } from 'lucide-react';
 import type { FigmaAnalysis } from '@/types/figma';
 
 export default function FigmaPage() {
+  usePageTitle('Figma Translator');
   const [analysis, setAnalysis] = useState<FigmaAnalysis | null>(null);
   const [aiSuggestions, setAiSuggestions] = useState<Record<string, { suggestedClass?: string; notes?: string }> | null>(null);
   const [aiEnabled, setAiEnabled] = useState(false);
