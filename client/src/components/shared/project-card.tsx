@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { MoreHorizontal, Pencil, Trash2, FolderOpen } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { MoreHorizontal, Pencil, Trash2, FolderOpen, Settings2 } from 'lucide-react';
 import type { Project } from '@/types/project';
 
 export interface ProjectCardProps {
@@ -9,6 +10,7 @@ export interface ProjectCardProps {
 }
 
 export function ProjectCard({ project, onEdit, onDelete }: ProjectCardProps) {
+  const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
 
   const formattedDate = new Date(project.createdAt).toLocaleDateString('en-US', {
@@ -127,6 +129,34 @@ export function ProjectCard({ project, onEdit, onDelete }: ProjectCardProps) {
                 overflow: 'hidden',
               }}
             >
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setMenuOpen(false);
+                  navigate(`/setup?project=${project.id}`);
+                }}
+                className="flex items-center w-full border-none bg-transparent cursor-pointer"
+                style={{
+                  height: 36,
+                  padding: '0 12px',
+                  gap: 8,
+                  fontSize: 'var(--text-sm)',
+                  fontWeight: 500,
+                  color: 'var(--text-secondary)',
+                  fontFamily: 'var(--font-sans)',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--surface-hover)';
+                  e.currentTarget.style.color = 'var(--text-primary)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                  e.currentTarget.style.color = 'var(--text-secondary)';
+                }}
+              >
+                <Settings2 size={14} />
+                <span>Setup</span>
+              </button>
               <button
                 onClick={(e) => {
                   e.stopPropagation();
