@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify';
-import { registerSchema, loginSchema, refreshSchema, logoutSchema } from './schemas.js';
+import { registerSchema, loginSchema, refreshSchema, logoutSchema, updateAccountSchema, changePasswordSchema } from './schemas.js';
 import * as authService from '../../services/auth-service.js';
 import { requireAuth } from '../../middleware/auth.js';
 import { ValidationError } from '../../utils/errors.js';
@@ -69,6 +69,32 @@ export async function authRoutes(app: FastifyInstance) {
     }
 
     return reply.send({ user });
+  });
+
+  // PUT /api/auth/account — update name/email
+  app.put('/account', { preHandler: [requireAuth] }, async (request, reply) => {
+    const parsed = updateAccountSchema.safeParse(request.body);
+    if (!parsed.success) {
+      throw new ValidationError(parsed.error.flatten().fieldErrors);
+    }
+
+    const user = await authService.updateAccount(request.user.userId, parsed.data);
+    return reply.send({ data: user });
+  });
+
+  // PUT /api/auth/password — change password
+  app.put('/password', { preHandler: [requireAuth] }, async (request, reply) => {
+    const parsed = changePasswordSchema.safeParse(request.body);
+    if (!parsed.success) {
+      throw new ValidationError(parsed.error.flatten().fieldErrors);
+    }
+
+    await authService.changePassword(
+      request.user.userId,
+      parsed.data.currentPassword,
+      parsed.data.newPassword,
+    );
+    return reply.send({ success: true });
   });
 
   // Google OAuth stubs

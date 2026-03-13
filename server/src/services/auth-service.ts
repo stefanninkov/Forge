@@ -227,6 +227,50 @@ export async function revokeAllUserTokens(userId: string): Promise<void> {
   await prisma.refreshToken.deleteMany({ where: { userId } });
 }
 
+export async function updateAccount(
+  userId: string,
+  data: { name?: string; email?: string },
+): Promise<UserResponse> {
+  if (data.email) {
+    const existing = await prisma.user.findUnique({ where: { email: data.email } });
+    if (existing && existing.id !== userId) {
+      throw new ConflictError('A user with this email already exists');
+    }
+  }
+
+  const user = await prisma.user.update({
+    where: { id: userId },
+    data: {
+      ...(data.name !== undefined && { name: data.name }),
+      ...(data.email !== undefined && { email: data.email }),
+    },
+  });
+
+  return { id: user.id, email: user.email, name: user.name };
+}
+
+export async function changePassword(
+  userId: string,
+  currentPassword: string,
+  newPassword: string,
+): Promise<void> {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user || !user.passwordHash) {
+    throw new UnauthorizedError('Cannot change password for this account');
+  }
+
+  const valid = await comparePassword(currentPassword, user.passwordHash);
+  if (!valid) {
+    throw new UnauthorizedError('Current password is incorrect');
+  }
+
+  const newHash = await hashPassword(newPassword);
+  await prisma.user.update({
+    where: { id: userId },
+    data: { passwordHash: newHash },
+  });
+}
+
 export async function cleanupExpiredTokens(): Promise<number> {
   const result = await prisma.refreshToken.deleteMany({
     where: {

@@ -61,6 +61,21 @@ async function start() {
   try {
     await app.listen({ port: env.PORT, host: '0.0.0.0' });
     app.log.info(`Server running on port ${env.PORT}`);
+
+    // Keep-alive: ping own health endpoint every 13 minutes to prevent
+    // Render free-tier spin-down (which causes 30-50s cold starts).
+    if (env.NODE_ENV === 'production') {
+      const KEEP_ALIVE_INTERVAL = 13 * 60 * 1000; // 13 minutes
+      const selfUrl = env.API_URL || `http://localhost:${env.PORT}`;
+      setInterval(async () => {
+        try {
+          await fetch(`${selfUrl}/api/health`);
+        } catch {
+          // Silently ignore — this is just a keep-alive ping
+        }
+      }, KEEP_ALIVE_INTERVAL);
+      app.log.info('Keep-alive ping enabled (every 13 minutes)');
+    }
   } catch (err) {
     app.log.error(err);
     process.exit(1);
