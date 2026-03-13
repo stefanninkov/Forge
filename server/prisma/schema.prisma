@@ -70,6 +70,29 @@ model SetupProgress {
   @@map("setup_progress")
 }
 
+model AnimationPreset {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String?  @map("user_id") @db.Uuid
+  name        String
+  description String?
+  category    String
+  engine      AnimationEngine
+  trigger     AnimationTrigger
+  config      Json
+  previewHtml String?  @map("preview_html") @db.Text
+  isSystem    Boolean  @default(false) @map("is_system")
+  isPublished Boolean  @default(false) @map("is_published")
+  tags        String[] @default([])
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@index([engine])
+  @@index([trigger])
+  @@index([isSystem])
+  @@map("animation_presets")
+}
+
 model RefreshToken {
   id        String   @id @default(uuid()) @db.Uuid
   userId    String   @map("user_id") @db.Uuid
@@ -95,4 +118,20 @@ enum SetupStatus {
   SKIPPED
 
   @@map("setup_status")
+}
+
+enum AnimationEngine {
+  CSS
+  GSAP
+
+  @@map("animation_engine")
+}
+
+enum AnimationTrigger {
+  SCROLL
+  HOVER
+  CLICK
+  LOAD
+
+  @@map("animation_trigger")
 }

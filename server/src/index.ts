@@ -6,6 +6,8 @@ import { errorHandler } from './middleware/error-handler.js';
 import { authMiddleware } from './middleware/auth.js';
 import { authRoutes } from './routes/auth/index.js';
 import { projectRoutes } from './routes/projects/index.js';
+import { setupRoutes, setupProfileRoutes } from './routes/setup/index.js';
+import { animationRoutes, projectAnimationRoutes } from './routes/animations/index.js';
 
 const app = Fastify({
   logger: {
@@ -37,6 +39,10 @@ async function start() {
   // Routes
   await app.register(authRoutes, { prefix: '/api/auth' });
   await app.register(projectRoutes, { prefix: '/api/projects' });
+  await app.register(setupRoutes, { prefix: '/api/projects' });
+  await app.register(setupProfileRoutes, { prefix: '/api/setup-profiles' });
+  await app.register(animationRoutes, { prefix: '/api/animations' });
+  await app.register(projectAnimationRoutes, { prefix: '/api/projects' });
 
   // Health check
   app.get('/api/health', async () => {
