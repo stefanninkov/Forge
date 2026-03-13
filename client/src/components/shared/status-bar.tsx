@@ -1,14 +1,16 @@
 import { useMasterScriptStatus } from '@/hooks/use-master-script-status';
-import { useMCPConnection } from '@/hooks/use-mcp-connection';
 import { useActiveProject } from '@/hooks/use-active-project';
-import { Code, Wifi, WifiOff, Ruler, Loader2 } from 'lucide-react';
+import { useIntegrations } from '@/hooks/use-integrations';
+import { Code, Globe, Ruler, Loader2 } from 'lucide-react';
 
 export function StatusBar() {
   const { activeProjectId } = useActiveProject();
   const { scriptStatus, scalingStatus, isGenerating } = useMasterScriptStatus();
-  const { status: mcpStatus } = useMCPConnection();
+  const { data: integrations } = useIntegrations();
 
   if (!activeProjectId) return null;
+
+  const webflowConnected = !!integrations?.find((i) => i.provider === 'webflow');
 
   const scriptLabel = {
     none: 'No script',
@@ -50,10 +52,10 @@ export function StatusBar() {
         flexShrink: 0,
       }}
     >
-      {/* MCP status */}
-      <div className="flex items-center" style={{ gap: 4, color: mcpStatus === 'connected' ? 'var(--accent)' : 'var(--text-tertiary)' }}>
-        {mcpStatus === 'connected' ? <Wifi size={11} /> : <WifiOff size={11} />}
-        <span>{mcpStatus === 'connected' ? 'MCP connected' : 'MCP disconnected'}</span>
+      {/* Webflow API status */}
+      <div className="flex items-center" style={{ gap: 4, color: webflowConnected ? 'var(--accent)' : 'var(--text-tertiary)' }}>
+        <Globe size={11} />
+        <span>{webflowConnected ? 'Webflow connected' : 'Webflow not connected'}</span>
       </div>
 
       <div style={{ width: 1, height: 12, backgroundColor: 'var(--border-subtle)' }} />

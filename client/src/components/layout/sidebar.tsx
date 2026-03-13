@@ -24,6 +24,7 @@ import {
   Check,
   Wifi,
   WifiOff,
+  ClipboardList,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/hooks/use-theme';
@@ -31,6 +32,8 @@ import { useSidebar } from '@/hooks/use-sidebar';
 import { useAuth } from '@/hooks/use-auth';
 import { useProjects } from '@/hooks/use-projects';
 import { useActiveProject } from '@/hooks/use-active-project';
+import { useIntegrations } from '@/hooks/use-integrations';
+import { ClipboardHistoryPanel } from '@/components/shared/clipboard-history-panel';
 import type { ComponentType } from 'react';
 import type { LucideProps } from 'lucide-react';
 
@@ -86,8 +89,10 @@ export function Sidebar() {
   const { collapsed, toggleCollapsed } = useSidebar();
   const { user, clearAuth } = useAuth();
   const { data: projects } = useProjects();
+  const { data: integrations } = useIntegrations();
   const { activeProjectId, setActiveProjectId } = useActiveProject();
   const [projectMenuOpen, setProjectMenuOpen] = useState(false);
+  const [clipboardOpen, setClipboardOpen] = useState(false);
 
   const activeProject = projects?.find((p) => p.id === activeProjectId) ?? projects?.[0] ?? null;
 
@@ -300,15 +305,15 @@ export function Sidebar() {
                 color: 'var(--text-tertiary)',
               }}
             >
-              {activeProject.webflowSiteId ? (
+              {integrations?.find((i) => i.provider === 'webflow') ? (
                 <>
                   <Wifi size={10} style={{ color: 'var(--accent)' }} />
-                  <span style={{ color: 'var(--accent)' }}>Webflow connected</span>
+                  <span style={{ color: 'var(--accent)' }}>Webflow API connected</span>
                 </>
               ) : (
                 <>
                   <WifiOff size={10} />
-                  <span>No Webflow site</span>
+                  <span>Webflow not connected</span>
                 </>
               )}
             </div>
@@ -663,6 +668,36 @@ export function Sidebar() {
           )}
         </button>
 
+        {/* Clipboard history */}
+        <button
+          onClick={() => setClipboardOpen(true)}
+          className={cn(
+            'flex items-center cursor-pointer border-none bg-transparent w-full',
+            collapsed && 'justify-center',
+          )}
+          style={{
+            height: 36,
+            padding: collapsed ? '0 8px' : '0 12px',
+            borderRadius: 'var(--radius-md)',
+            fontSize: 'var(--text-sm)',
+            fontWeight: 500,
+            color: 'var(--text-secondary)',
+            gap: 10,
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = 'var(--surface-hover)';
+            e.currentTarget.style.color = 'var(--text-primary)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'transparent';
+            e.currentTarget.style.color = 'var(--text-secondary)';
+          }}
+          title={collapsed ? 'Clipboard history' : undefined}
+        >
+          <ClipboardList size={18} style={{ flexShrink: 0 }} />
+          {!collapsed && <span>Clipboard</span>}
+        </button>
+
         {/* User area */}
         {user && (
           <button
@@ -696,6 +731,7 @@ export function Sidebar() {
           </button>
         )}
       </div>
+      <ClipboardHistoryPanel open={clipboardOpen} onClose={() => setClipboardOpen(false)} />
     </aside>
   );
 }

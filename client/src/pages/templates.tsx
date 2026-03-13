@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from 'react';
-import { Download, Loader2, Plus } from 'lucide-react';
+import { Download, Loader2, Plus, ArrowLeftRight } from 'lucide-react';
 import { PageHeader } from '@/components/layout/page-header';
 import { usePageTitle } from '@/hooks/use-page-title';
 import { TemplateCard } from '@/components/modules/templates/template-card';
@@ -7,6 +7,7 @@ import { TemplateFiltersBar } from '@/components/modules/templates/template-filt
 import { TemplateDetailPanel } from '@/components/modules/templates/template-detail-panel';
 import { CreateTemplateDialog } from '@/components/modules/templates/create-template-dialog';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
+import { TemplateDiffPanel } from '@/components/modules/templates/template-diff-panel';
 import {
   useTemplates,
   useCreateTemplate,
@@ -24,6 +25,8 @@ export default function TemplatesPage() {
   const [detailOpen, setDetailOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<TemplateSummary | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [diffOpen, setDiffOpen] = useState(false);
+  const [diffTemplateId, setDiffTemplateId] = useState<string | null>(null);
 
   const { data: templates, isLoading, error } = useTemplates(filters);
   const createMutation = useCreateTemplate();

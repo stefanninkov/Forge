@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { X, Copy, Zap, Loader2, Upload } from 'lucide-react';
+import { X, Copy, Zap, Loader2, Upload, ArrowLeftRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { useTemplate } from '@/hooks/use-templates';
 import type { TemplateNode } from '@/types/template';
@@ -9,9 +9,10 @@ interface TemplateDetailPanelProps {
   open: boolean;
   onClose: () => void;
   onDuplicate?: (id: string) => void;
+  onCompare?: (id: string) => void;
 }
 
-export function TemplateDetailPanel({ templateId, open, onClose, onDuplicate }: TemplateDetailPanelProps) {
+export function TemplateDetailPanel({ templateId, open, onClose, onDuplicate, onCompare }: TemplateDetailPanelProps) {
   const { data: template, isLoading } = useTemplate(templateId);
 
   // Close on Escape

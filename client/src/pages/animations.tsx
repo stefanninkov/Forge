@@ -1,11 +1,12 @@
 import { useState, useCallback, useMemo } from 'react';
-import { Code, Download, Loader2 } from 'lucide-react';
+import { Code, Download, Loader2, Layers } from 'lucide-react';
 import { PageHeader } from '@/components/layout/page-header';
 import { usePageTitle } from '@/hooks/use-page-title';
 import { PresetCard } from '@/components/modules/animations/preset-card';
 import { PresetFiltersBar } from '@/components/modules/animations/preset-filters';
 import { ConfiguratorPanel } from '@/components/modules/animations/configurator-panel';
 import { ScriptGeneratorPanel } from '@/components/modules/animations/script-generator-panel';
+import { BulkAttributePanel } from '@/components/modules/animations/bulk-attribute-panel';
 import { useAnimationPresets, useSeedPresets, useDeleteAnimationPreset } from '@/hooks/use-animations';
 import type { AnimationPreset, PresetFilters } from '@/types/animation';
 
@@ -15,6 +16,7 @@ export default function AnimationsPage() {
   const [selectedPreset, setSelectedPreset] = useState<AnimationPreset | null>(null);
   const [configuratorOpen, setConfiguratorOpen] = useState(false);
   const [scriptGenOpen, setScriptGenOpen] = useState(false);
+  const [bulkAttrOpen, setBulkAttrOpen] = useState(false);
 
   const { data: presets, isLoading, error } = useAnimationPresets(filters);
   const seedMutation = useSeedPresets();
@@ -56,6 +58,32 @@ export default function AnimationsPage() {
         description="Browse, configure, and preview animation presets."
         actions={
           <div className="flex items-center" style={{ gap: 8 }}>
+            <button
+              onClick={() => setBulkAttrOpen(true)}
+              className="flex items-center"
+              style={{
+                gap: 6,
+                height: 36,
+                padding: '0 14px',
+                border: '1px solid var(--border-default)',
+                borderRadius: 'var(--radius-md)',
+                backgroundColor: 'transparent',
+                color: 'var(--text-primary)',
+                fontSize: 'var(--text-sm)',
+                fontWeight: 500,
+                cursor: 'pointer',
+                fontFamily: 'var(--font-sans)',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--surface-hover)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+              }}
+            >
+              <Layers size={14} />
+              Bulk Apply
+            </button>
             <button
               onClick={() => setScriptGenOpen(true)}
               className="flex items-center"
@@ -266,6 +294,12 @@ export default function AnimationsPage() {
       <ScriptGeneratorPanel
         open={scriptGenOpen}
         onClose={() => setScriptGenOpen(false)}
+      />
+
+      {/* Bulk attribute application */}
+      <BulkAttributePanel
+        open={bulkAttrOpen}
+        onClose={() => setBulkAttrOpen(false)}
       />
     </>
   );
