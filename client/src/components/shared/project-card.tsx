@@ -21,6 +21,7 @@ export function ProjectCard({ project, onEdit, onDelete }: ProjectCardProps) {
 
   return (
     <div
+      onClick={() => navigate(`/setup?project=${project.id}`)}
       style={{
         position: 'relative',
         backgroundColor: 'var(--bg-primary)',
