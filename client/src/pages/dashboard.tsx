@@ -6,7 +6,8 @@ import { ProjectCard } from '@/components/shared/project-card';
 import { CreateProjectDialog } from '@/components/shared/create-project-dialog';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
 import { WelcomeDialog } from '@/components/shared/welcome-dialog';
-import { useProjects, useCreateProject, useUpdateProject, useDeleteProject } from '@/hooks/use-projects';
+import { useProjects, useCreateProject, useUpdateProject, useDeleteProject, useDuplicateProject } from '@/hooks/use-projects';
+import { ProjectNotesPanel } from '@/components/shared/project-notes-panel';
 import type { Project } from '@/types/project';
 
 export default function DashboardPage() {
@@ -15,10 +16,12 @@ export default function DashboardPage() {
   const createProject = useCreateProject();
   const updateProject = useUpdateProject();
   const deleteProject = useDeleteProject();
+  const duplicateProject = useDuplicateProject();
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editProject, setEditProject] = useState<Project | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null);
+  const [notesTarget, setNotesTarget] = useState<Project | null>(null);
 
   function handleCreate(data: { name: string; description?: string }) {
     createProject.mutate(data, {
@@ -203,6 +206,8 @@ export default function DashboardPage() {
                 project={project}
                 onEdit={setEditProject}
                 onDelete={setDeleteTarget}
+                onDuplicate={(p) => duplicateProject.mutate(p.id)}
+                onNotes={setNotesTarget}
               />
             ))}
           </div>
@@ -244,6 +249,14 @@ export default function DashboardPage() {
 
       {/* First-run welcome */}
       <WelcomeDialog onCreateProject={() => setCreateOpen(true)} />
+
+      {/* Notes panel */}
+      <ProjectNotesPanel
+        projectId={notesTarget?.id ?? null}
+        projectName={notesTarget?.name ?? ''}
+        open={notesTarget !== null}
+        onClose={() => setNotesTarget(null)}
+      />
     </>
   );
 }

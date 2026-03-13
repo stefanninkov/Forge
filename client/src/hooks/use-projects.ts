@@ -55,3 +55,41 @@ export function useDeleteProject() {
     onError: () => toast.error('Failed to delete project'),
   });
 }
+
+export function useDuplicateProject() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      api.post<ProjectResponse>(`/projects/${id}/duplicate`).then((r) => r.data),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      toast.success(`Project duplicated as "${data.name}"`);
+    },
+    onError: () => toast.error('Failed to duplicate project'),
+  });
+}
+
+interface NotesResponse {
+  data: { notes: string };
+}
+
+export function useProjectNotes(projectId: string | null) {
+  return useQuery({
+    queryKey: ['project-notes', projectId],
+    queryFn: () =>
+      api.get<NotesResponse>(`/projects/${projectId}/notes`).then((r) => r.data.notes),
+    enabled: !!projectId,
+  });
+}
+
+export function useUpdateProjectNotes() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, notes }: { id: string; notes: string }) =>
+      api.put<NotesResponse>(`/projects/${id}/notes`, { notes }).then((r) => r.data.notes),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['project-notes', variables.id] });
+    },
+    onError: () => toast.error('Failed to save notes'),
+  });
+}

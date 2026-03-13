@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { requireAuth } from '../../middleware/auth.js';
-import { createProjectSchema, updateProjectSchema, projectIdSchema } from './schemas.js';
+import { createProjectSchema, updateProjectSchema, projectIdSchema, updateNotesSchema } from './schemas.js';
 import * as projectService from '../../services/project-service.js';
 import { ValidationError } from '../../utils/errors.js';
 import { logActivity } from '../../utils/activity-logger.js';
@@ -69,5 +69,53 @@ export async function projectRoutes(app: FastifyInstance) {
     await logActivity({ userId: request.user.userId, projectId: params.data.id, action: 'PROJECT_DELETED' });
     await projectService.deleteProject(params.data.id, request.user.userId);
     return reply.status(204).send();
+  });
+
+  // POST /api/projects/:id/duplicate
+  app.post('/:id/duplicate', async (request, reply) => {
+    const params = projectIdSchema.safeParse(request.params);
+    if (!params.success) {
+      throw new ValidationError(params.error.flatten().fieldErrors);
+    }
+
+    const project = await projectService.duplicateProject(params.data.id, request.user.userId);
+    await logActivity({
+      userId: request.user.userId,
+      projectId: project.id,
+      action: 'PROJECT_CREATED',
+      details: { duplicatedFrom: params.data.id, name: project.name },
+    });
+    return reply.status(201).send({ data: project });
+  });
+
+  // GET /api/projects/:id/notes
+  app.get('/:id/notes', async (request, reply) => {
+    const params = projectIdSchema.safeParse(request.params);
+    if (!params.success) {
+      throw new ValidationError(params.error.flatten().fieldErrors);
+    }
+
+    const project = await projectService.getProject(params.data.id, request.user.userId);
+    return reply.send({ data: { notes: project.notes ?? '' } });
+  });
+
+  // PUT /api/projects/:id/notes
+  app.put('/:id/notes', async (request, reply) => {
+    const params = projectIdSchema.safeParse(request.params);
+    if (!params.success) {
+      throw new ValidationError(params.error.flatten().fieldErrors);
+    }
+
+    const parsed = updateNotesSchema.safeParse(request.body);
+    if (!parsed.success) {
+      throw new ValidationError(parsed.error.flatten().fieldErrors);
+    }
+
+    const project = await projectService.updateProjectNotes(
+      params.data.id,
+      request.user.userId,
+      parsed.data.notes,
+    );
+    return reply.send({ data: { notes: project.notes ?? '' } });
   });
 }

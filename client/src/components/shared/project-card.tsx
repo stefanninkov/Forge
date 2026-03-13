@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MoreHorizontal, Pencil, Trash2, FolderOpen, Settings2, Star } from 'lucide-react';
+import { MoreHorizontal, Pencil, Trash2, FolderOpen, Settings2, Star, Copy, StickyNote } from 'lucide-react';
 import { useIsFavorited, useToggleFavorite } from '@/hooks/use-favorites';
 import type { Project } from '@/types/project';
 
@@ -8,9 +8,11 @@ export interface ProjectCardProps {
   project: Project;
   onEdit: (project: Project) => void;
   onDelete: (project: Project) => void;
+  onDuplicate?: (project: Project) => void;
+  onNotes?: (project: Project) => void;
 }
 
-export function ProjectCard({ project, onEdit, onDelete }: ProjectCardProps) {
+export function ProjectCard({ project, onEdit, onDelete, onDuplicate, onNotes }: ProjectCardProps) {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const { data: isFavorited } = useIsFavorited('project', project.id);
@@ -216,6 +218,63 @@ export function ProjectCard({ project, onEdit, onDelete }: ProjectCardProps) {
                 <Pencil size={14} />
                 <span>Edit</span>
               </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setMenuOpen(false);
+                  onDuplicate?.(project);
+                }}
+                className="flex items-center w-full border-none bg-transparent cursor-pointer"
+                style={{
+                  height: 36,
+                  padding: '0 12px',
+                  gap: 8,
+                  fontSize: 'var(--text-sm)',
+                  fontWeight: 500,
+                  color: 'var(--text-secondary)',
+                  fontFamily: 'var(--font-sans)',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--surface-hover)';
+                  e.currentTarget.style.color = 'var(--text-primary)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                  e.currentTarget.style.color = 'var(--text-secondary)';
+                }}
+              >
+                <Copy size={14} />
+                <span>Duplicate</span>
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setMenuOpen(false);
+                  onNotes?.(project);
+                }}
+                className="flex items-center w-full border-none bg-transparent cursor-pointer"
+                style={{
+                  height: 36,
+                  padding: '0 12px',
+                  gap: 8,
+                  fontSize: 'var(--text-sm)',
+                  fontWeight: 500,
+                  color: 'var(--text-secondary)',
+                  fontFamily: 'var(--font-sans)',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--surface-hover)';
+                  e.currentTarget.style.color = 'var(--text-primary)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                  e.currentTarget.style.color = 'var(--text-secondary)';
+                }}
+              >
+                <StickyNote size={14} />
+                <span>Notes</span>
+              </button>
+              <div style={{ height: 1, backgroundColor: 'var(--border-subtle)', margin: '4px 0' }} />
               <button
                 onClick={(e) => {
                   e.stopPropagation();

@@ -3,17 +3,18 @@ import { useNavigate } from 'react-router-dom';
 import {
   Search, LayoutDashboard, Settings, Wrench, Figma, LayoutTemplate,
   Sparkles, Gauge, SearchCheck, Brain, Zap, Plus, Moon, Sun, PanelLeftClose,
-  PanelLeft, Keyboard, Activity, FileText, HeartPulse,
+  PanelLeft, Keyboard, Activity, FileText, HeartPulse, Clock,
 } from 'lucide-react';
 import { useTheme } from '@/hooks/use-theme';
 import { useSidebar } from '@/hooks/use-sidebar';
+import { useRecentPages } from '@/hooks/use-recent-pages';
 
 interface CommandItem {
   id: string;
   label: string;
   description?: string;
   icon: typeof Search;
-  category: 'navigation' | 'actions' | 'search';
+  category: 'recent' | 'navigation' | 'actions' | 'search';
   shortcut?: string;
   action: () => void;
 }
@@ -63,8 +64,22 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
     ];
   }, [navigate, onClose, theme, setTheme, collapsed, setCollapsed]);
 
+  const recentPages = useRecentPages((s) => s.pages);
+
+  const recentItems = useMemo<CommandItem[]>(() => {
+    if (query.trim()) return [];
+    const nav = (path: string) => () => { navigate(path); onClose(); };
+    return recentPages.slice(0, 5).map((page, i) => ({
+      id: `recent-${i}`,
+      label: page.label,
+      icon: Clock,
+      category: 'recent' as const,
+      action: nav(page.path),
+    }));
+  }, [recentPages, query, navigate, onClose]);
+
   const filtered = useMemo(() => {
-    if (!query.trim()) return commands;
+    if (!query.trim()) return [...recentItems, ...commands];
     const q = query.toLowerCase();
     return commands.filter(
       (c) =>
@@ -72,7 +87,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
         c.description?.toLowerCase().includes(q) ||
         c.category.includes(q),
     );
-  }, [commands, query]);
+  }, [commands, recentItems, query]);
 
   const grouped = useMemo(() => {
     const groups: Record<string, CommandItem[]> = {};
@@ -126,6 +141,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
   if (!open) return null;
 
   const CATEGORY_LABELS: Record<string, string> = {
+    recent: 'Recent',
     navigation: 'Navigate',
     actions: 'Actions',
     search: 'Search',

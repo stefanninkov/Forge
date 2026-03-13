@@ -19,5 +19,9 @@ export const projectIdSchema = z.object({
   id: z.string().uuid('Invalid project ID'),
 });
 
+export const updateNotesSchema = z.object({
+  notes: z.string().max(10000),
+});
+
 export type CreateProjectInput = z.infer<typeof createProjectSchema>;
 export type UpdateProjectInput = z.infer<typeof updateProjectSchema>;
