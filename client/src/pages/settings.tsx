@@ -4,7 +4,7 @@ import { PageHeader } from '@/components/layout/page-header';
 import { usePageTitle } from '@/hooks/use-page-title';
 import { useAuth } from '@/hooks/use-auth';
 import { useTheme } from '@/hooks/use-theme';
-import { api, ApiError } from '@/lib/api';
+import { FirebaseError } from 'firebase/app';
 import {
   useIntegrations,
   useConnectIntegration,
@@ -84,12 +84,11 @@ const PROVIDERS: ProviderConfig[] = [
 
 /* ─── Account Tab ─── */
 function AccountSection() {
-  const { user } = useAuth();
-  const [name, setName] = useState(user?.name ?? '');
+  const { user, updateName, updateEmail, updatePassword } = useAuth();
+  const [name, setName] = useState(user?.displayName ?? '');
   const [email, setEmail] = useState(user?.email ?? '');
   const [saving, setSaving] = useState(false);
 
-  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [changingPw, setChangingPw] = useState(false);
 
@@ -97,10 +96,11 @@ function AccountSection() {
     e.preventDefault();
     setSaving(true);
     try {
-      await api.put('/auth/account', { name, email });
+      if (name !== user?.displayName) await updateName(name);
+      if (email !== user?.email) await updateEmail(email);
       toast.success('Account updated');
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : 'Failed to update account');
+      toast.error(err instanceof FirebaseError ? err.message : 'Failed to update account');
     } finally {
       setSaving(false);
     }
@@ -110,12 +110,11 @@ function AccountSection() {
     e.preventDefault();
     setChangingPw(true);
     try {
-      await api.put('/auth/password', { currentPassword, newPassword });
+      await updatePassword(newPassword);
       toast.success('Password changed');
-      setCurrentPassword('');
       setNewPassword('');
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : 'Failed to change password');
+      toast.error(err instanceof FirebaseError ? err.message : 'Failed to change password');
     } finally {
       setChangingPw(false);
     }
@@ -234,24 +233,6 @@ function AccountSection() {
         <form onSubmit={handleChangePassword}>
           <div className="flex flex-col" style={{ gap: 12 }}>
             <div>
-              <label style={labelStyle}>Current password</label>
-              <input
-                type="password"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-                required
-                style={inputStyle}
-                onFocus={(e) => {
-                  e.currentTarget.style.borderColor = 'var(--accent)';
-                  e.currentTarget.style.boxShadow = '0 0 0 2px var(--accent-subtle)';
-                }}
-                onBlur={(e) => {
-                  e.currentTarget.style.borderColor = 'var(--border-default)';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-              />
-            </div>
-            <div>
               <label style={labelStyle}>New password</label>
               <input
                 type="password"
@@ -276,7 +257,7 @@ function AccountSection() {
             <div>
               <button
                 type="submit"
-                disabled={changingPw || !currentPassword || newPassword.length < 8}
+                disabled={changingPw || newPassword.length < 8}
                 style={{
                   height: 36,
                   padding: '0 16px',
@@ -287,7 +268,7 @@ function AccountSection() {
                   fontSize: 'var(--text-sm)',
                   fontWeight: 500,
                   cursor: changingPw ? 'not-allowed' : 'pointer',
-                  opacity: changingPw || !currentPassword || newPassword.length < 8 ? 0.5 : 1,
+                  opacity: changingPw || newPassword.length < 8 ? 0.5 : 1,
                   fontFamily: 'var(--font-sans)',
                 }}
               >

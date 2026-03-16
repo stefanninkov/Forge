@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
-import { api, ApiError } from '@/lib/api';
+import { confirmPasswordReset } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
+import { FirebaseError } from 'firebase/app';
 import { usePageTitle } from '@/hooks/use-page-title';
 import { CheckCircle2 } from 'lucide-react';
 
@@ -17,11 +19,27 @@ const inputStyle = {
   fontFamily: 'var(--font-sans)',
 };
 
+function getFirebaseErrorMessage(err: unknown): string {
+  if (err instanceof FirebaseError) {
+    switch (err.code) {
+      case 'auth/expired-action-code':
+        return 'This reset link has expired. Please request a new one.';
+      case 'auth/invalid-action-code':
+        return 'This reset link is invalid or has already been used.';
+      case 'auth/weak-password':
+        return 'Password must be at least 6 characters.';
+      default:
+        return err.message;
+    }
+  }
+  return 'Failed to reset password. The link may have expired.';
+}
+
 export default function ResetPasswordPage() {
   usePageTitle('Reset Password');
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const token = searchParams.get('token') ?? '';
+  const oobCode = searchParams.get('oobCode') ?? '';
 
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -45,21 +63,17 @@ export default function ResetPasswordPage() {
 
     setLoading(true);
     try {
-      await api.post('/auth/reset-password', { token, newPassword });
+      await confirmPasswordReset(auth, oobCode, newPassword);
       setSuccess(true);
       setTimeout(() => navigate('/login'), 3000);
     } catch (err) {
-      if (err instanceof ApiError) {
-        setError(err.message);
-      } else {
-        setError('Failed to reset password. The link may have expired.');
-      }
+      setError(getFirebaseErrorMessage(err));
     } finally {
       setLoading(false);
     }
   }
 
-  if (!token) {
+  if (!oobCode) {
     return (
       <div
         className="flex items-center justify-center"

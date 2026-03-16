@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { api } from '@/lib/api';
+import { queryUserDocs, querySubcollection, orderBy, where } from '@/lib/firestore';
 
 interface HealthOverviewData {
   projectCount: number;
@@ -41,27 +41,37 @@ interface GroupedTrends {
 export function useHealthOverview() {
   return useQuery({
     queryKey: ['health-overview'],
-    queryFn: () =>
-      api.get<HealthOverviewResponse>('/health-dashboard/overview').then((r) => r.data),
+    queryFn: async (): Promise<HealthOverviewData> => {
+      const projects = await queryUserDocs<{ name: string }>('projects', [where('isArchived', '==', false)]);
+      // For now return basic counts — full dashboard aggregation needs more logic
+      return {
+        projectCount: projects.length,
+        speed: null,
+        seo: null,
+        aeo: null,
+        recentAlerts: [],
+      };
+    },
   });
 }
 
 export function useProjectTrends(projectId: string | null) {
   return useQuery({
     queryKey: ['health-trends', projectId],
-    queryFn: () =>
-      api
-        .get<TrendsResponse>(`/health-dashboard/projects/${projectId}/trends`)
-        .then((r) => {
-          const grouped: GroupedTrends = { speed: [], seo: [], aeo: [] };
-          for (const point of r.data) {
-            const key = point.type.toLowerCase() as keyof GroupedTrends;
-            if (key in grouped) {
-              grouped[key].push({ score: point.score, date: point.createdAt });
-            }
-          }
-          return grouped;
-        }),
+    queryFn: async () => {
+      const audits = await querySubcollection<TrendPoint>(
+        'projects', projectId!, 'audits',
+        [orderBy('createdAt', 'asc')],
+      );
+      const grouped: GroupedTrends = { speed: [], seo: [], aeo: [] };
+      for (const point of audits) {
+        const key = point.type.toLowerCase() as keyof GroupedTrends;
+        if (key in grouped) {
+          grouped[key].push({ score: point.score, date: point.createdAt });
+        }
+      }
+      return grouped;
+    },
     enabled: !!projectId,
   });
 }

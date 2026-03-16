@@ -803,6 +803,79 @@ All requested expansion features (except Launch & Business) are complete:
 - Server: 0 TypeScript errors
 - Vite build: 1937 modules, 1.68s, ~383KB main bundle gzipped to 118KB
 
+#### Firebase Migration (2026-03-16)
+
+**Backend Migration: Fastify/PostgreSQL/Prisma → Firebase**
+
+All client-side hooks migrated from REST API (`@/lib/api`) to Firebase:
+- **Auth**: Firebase Auth (email/password, Google OAuth, password reset) replacing custom JWT
+- **Database**: Firestore replacing PostgreSQL/Prisma for all data (projects, templates, presets, audits, teams, etc.)
+- **Cloud Functions**: Firebase Cloud Functions (europe-west1) replacing Fastify server endpoints
+
+**Client Hook Migrations (all `api` imports removed):**
+- `use-auth.ts` → Firebase Auth (onAuthStateChanged, createUser, signIn, etc.)
+- `use-projects.ts` → Firestore queries (queryUserDocs, createDocument, etc.)
+- `use-audits.ts` → Cloud Functions (httpsCallable for runSpeedAudit, runSeoAudit, runAeoAudit)
+- `use-figma.ts` → Cloud Functions (analyzeFigma, suggestClassNames)
+- `use-templates.ts` → Firestore (templates collection)
+- `use-animations.ts` → Firestore (animationPresets collection)
+- `use-setup.ts` → Firestore (projects/{id}/setupProgress subcollection)
+- `use-reports.ts` → Firestore (handoffReports collection)
+- `use-favorites.ts` → Firestore (favorites collection)
+- `use-activity.ts` → Firestore (activityLog collection + project subcollections)
+- `use-integrations.ts` → Firestore (users/{uid}.integrations field)
+- `use-scaling-system.ts` → Firestore (project.scalingConfig field)
+- `use-teams.ts` → Firestore (teams collection + members/invitations subcollections)
+- `use-community.ts` → Firestore (published templates/presets queries)
+- `use-audit-schedules.ts` → Firestore (projects/{id}/schedules subcollection)
+- `use-notification-preferences.ts` → Firestore (notificationPreferences/{uid})
+- `use-health-dashboard.ts` → Firestore (aggregate queries)
+- `use-project-scores.ts` → Firestore (projects/{id}/audits subcollection)
+- `use-semantic.ts` → Cloud Function (analyzeSemanticHtml)
+- `use-webflow-push.ts` → Cloud Functions (push operations)
+- `use-class-names.ts` → Cloud Function (suggestClassNames)
+- `use-mcp-connection.ts` → Cloud Functions (mcpStatus, mcpReconnect)
+- `use-script-history.ts` → Firestore (projects/{id}/scriptVersions subcollection)
+
+**Component Migrations:**
+- `code-review-panel.tsx` → Cloud Function (aiCodeReview)
+- `url-capture-dialog.tsx` → Cloud Function (captureUrl)
+- `handoff-report-dialog.tsx` → Firestore (getDocument, querySubcollection)
+- `reset-password.tsx` → Firebase Auth (confirmPasswordReset)
+- `settings.tsx` → Firebase Auth (updateName, updateEmail, updatePassword)
+- `login.tsx` → Firebase Auth (signInWithEmailAndPassword)
+- `register.tsx` → Firebase Auth (createUserWithEmailAndPassword)
+- `forgot-password.tsx` → Firebase Auth (sendPasswordResetEmail)
+
+**Firebase Infrastructure Created:**
+- `client/src/lib/firebase.ts` — Firebase client init (Auth, Firestore, Functions)
+- `client/src/lib/firestore.ts` — Typed Firestore helpers (queryUserDocs, createDocument, etc.)
+- `client/.env` + `client/.env.production` — Firebase config
+- `firebase.json` — Functions + Firestore + Emulators config
+- `firestore.rules` — Security rules with user-scoped access
+- `.firebaserc` — Project ID mapping
+
+**Cloud Functions Created (`functions/src/`):**
+- `index.ts` — Entry point exporting all functions
+- `utils.ts` — Auth helpers, Firestore instance, Claude API client
+- `figma.ts` — analyzeFigma, suggestClassNames (full Figma parser + AI)
+- `audits.ts` — runSpeedAudit, runSeoAudit, runAeoAudit, getAiRecommendations
+- `ai.ts` — aiCodeReview
+- `semantic.ts` — analyzeSemanticHtml
+- `capture.ts` — captureUrl (server-side HTML fetching)
+
+**Build Verification:**
+- Client: 0 TypeScript errors, Vite build clean
+- Functions: 0 TypeScript errors, tsc build clean
+- Zero remaining `@/lib/api` imports in client
+
+**Remaining TODO:**
+- Deploy Cloud Functions (`firebase deploy --only functions`)
+- Deploy Firestore rules (`firebase deploy --only firestore:rules`)
+- Delete `server/` directory (no longer needed)
+- Rebuild + redeploy client to GitHub Pages
+- Seed system data (animation presets, template presets, setup checklist items)
+
 ### Not Built (per user directive)
 - Stripe billing / payment integration
 - Landing page / marketing site

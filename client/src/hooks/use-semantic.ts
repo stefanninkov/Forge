@@ -1,5 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
-import { api } from '@/lib/api';
+import { httpsCallable } from 'firebase/functions';
+import { functions } from '@/lib/firebase';
 
 interface ParsedNode {
   id: string;
@@ -33,14 +34,13 @@ interface SemanticAnalysisResult {
   hierarchyIssues: HierarchyIssue[];
 }
 
-interface AnalyzeResponse {
-  data: SemanticAnalysisResult;
-}
-
 /** Analyze a structure tree for semantic HTML suggestions */
 export function useSemanticAnalysis() {
   return useMutation({
-    mutationFn: (nodes: ParsedNode[]) =>
-      api.post<AnalyzeResponse>('/semantic/analyze', { nodes }).then((r) => r.data),
+    mutationFn: async (nodes: ParsedNode[]) => {
+      const fn = httpsCallable<{ nodes: ParsedNode[] }, SemanticAnalysisResult>(functions, 'analyzeSemanticHtml');
+      const result = await fn({ nodes });
+      return result.data;
+    },
   });
 }

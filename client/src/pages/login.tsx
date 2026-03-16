@@ -1,19 +1,28 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { api, ApiError } from '@/lib/api';
 import { useAuth } from '@/hooks/use-auth';
 import { usePageTitle } from '@/hooks/use-page-title';
+import { FirebaseError } from 'firebase/app';
 
-interface AuthResponse {
-  user: { id: string; email: string; name: string };
-  accessToken: string;
-  refreshToken: string;
+function getFirebaseErrorMessage(code: string): string {
+  switch (code) {
+    case 'auth/invalid-credential':
+    case 'auth/wrong-password':
+    case 'auth/user-not-found':
+      return 'Invalid email or password';
+    case 'auth/too-many-requests':
+      return 'Too many failed attempts. Try again later.';
+    case 'auth/user-disabled':
+      return 'This account has been disabled';
+    default:
+      return 'An unexpected error occurred';
+  }
 }
 
 export default function LoginPage() {
   usePageTitle('Log in');
   const navigate = useNavigate();
-  const { setAuth } = useAuth();
+  const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -25,13 +34,11 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const data = await api.post<AuthResponse>('/auth/login', { email, password });
-      localStorage.setItem('forge-refresh-token', data.refreshToken);
-      setAuth(data.user, data.accessToken);
+      await login(email, password);
       navigate('/');
     } catch (err) {
-      if (err instanceof ApiError) {
-        setError(err.message);
+      if (err instanceof FirebaseError) {
+        setError(getFirebaseErrorMessage(err.code));
       } else {
         setError('An unexpected error occurred');
       }

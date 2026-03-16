@@ -1,7 +1,8 @@
 import { useState, useCallback } from 'react';
 import { Globe, Loader2, X, Copy, Check, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
-import { api } from '@/lib/api';
+import { httpsCallable } from 'firebase/functions';
+import { functions } from '@/lib/firebase';
 
 interface UrlCaptureDialogProps {
   open: boolean;
@@ -24,8 +25,9 @@ export function UrlCaptureDialog({ open, onClose, onCaptured }: UrlCaptureDialog
     setResult(null);
 
     try {
-      const response = await api.post<{ html: string }>('/sections/capture/url', { url: url.trim() });
-      setResult(response.html);
+      const fn = httpsCallable<{ url: string }, { html: string }>(functions, 'captureUrl');
+      const response = await fn({ url: url.trim() });
+      setResult(response.data.html);
       onCaptured?.(response.html, url.trim());
       toast.success('Page captured successfully');
     } catch (err) {

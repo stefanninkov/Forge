@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { api } from '@/lib/api';
+import { httpsCallable } from 'firebase/functions';
+import { functions } from '@/lib/firebase';
 import { toast } from 'sonner';
 
 interface MCPConnectionStore {
@@ -15,8 +16,9 @@ export const useMCPConnection = create<MCPConnectionStore>((set) => ({
   reconnect: async () => {
     set({ status: 'reconnecting' });
     try {
-      const res = await api.post<{ data: { status: string; message: string } }>('/mcp/reconnect');
-      toast.info(res.data.message || 'MCP reconnection attempted');
+      const fn = httpsCallable<void, { status: string; message: string }>(functions, 'mcpReconnect');
+      const result = await fn();
+      toast.info(result.data.message || 'MCP reconnection attempted');
       set({ status: 'disconnected' });
     } catch {
       toast.error('Failed to reconnect to Webflow MCP');
@@ -25,10 +27,11 @@ export const useMCPConnection = create<MCPConnectionStore>((set) => ({
   },
   checkStatus: async () => {
     try {
-      const res = await api.get<{ data: { connected: boolean; site?: { name: string; url: string } } }>('/mcp/status');
+      const fn = httpsCallable<void, { connected: boolean; site?: { name: string; url: string } }>(functions, 'mcpStatus');
+      const result = await fn();
       set({
-        status: res.data.connected ? 'connected' : 'disconnected',
-        siteInfo: res.data.site ?? null,
+        status: result.data.connected ? 'connected' : 'disconnected',
+        siteInfo: result.data.site ?? null,
       });
     } catch {
       set({ status: 'disconnected', siteInfo: null });

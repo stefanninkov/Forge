@@ -1,6 +1,17 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '@/lib/api';
 import { toast } from 'sonner';
+import {
+  queryUserDocs,
+  getDocument,
+  createDocument,
+  updateDocument,
+  removeDocument,
+  querySubcollection,
+  createSubDocument,
+  removeSubDocument,
+  requireUid,
+  orderBy,
+} from '@/lib/firestore';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -45,14 +56,14 @@ interface TeamInvitation {
 export function useTeams() {
   return useQuery({
     queryKey: ['teams'],
-    queryFn: () => api.get<{ data: Team[] }>('/teams').then((r) => r.data),
+    queryFn: () => queryUserDocs<Team>('teams', [orderBy('createdAt', 'desc')]),
   });
 }
 
 export function useTeam(teamId: string | null) {
   return useQuery({
     queryKey: ['teams', teamId],
-    queryFn: () => api.get<{ data: Team }>(`/teams/${teamId}`).then((r) => r.data),
+    queryFn: () => getDocument<Team>('teams', teamId!),
     enabled: !!teamId,
   });
 }
@@ -60,7 +71,7 @@ export function useTeam(teamId: string | null) {
 export function useTeamMembers(teamId: string | null) {
   return useQuery({
     queryKey: ['teams', teamId, 'members'],
-    queryFn: () => api.get<{ data: TeamMember[] }>(`/teams/${teamId}/members`).then((r) => r.data),
+    queryFn: () => querySubcollection<TeamMember>('teams', teamId!, 'members'),
     enabled: !!teamId,
   });
 }
@@ -68,8 +79,7 @@ export function useTeamMembers(teamId: string | null) {
 export function useTeamInvitations(teamId: string | null) {
   return useQuery({
     queryKey: ['teams', teamId, 'invitations'],
-    queryFn: () =>
-      api.get<{ data: TeamInvitation[] }>(`/teams/${teamId}/invitations`).then((r) => r.data),
+    queryFn: () => querySubcollection<TeamInvitation>('teams', teamId!, 'invitations'),
     enabled: !!teamId,
   });
 }
@@ -79,8 +89,18 @@ export function useTeamInvitations(teamId: string | null) {
 export function useCreateTeam() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: { name: string; slug: string }) =>
-      api.post<{ data: Team }>('/teams', data).then((r) => r.data),
+    mutationFn: async (data: { name: string; slug: string }) => {
+      const uid = requireUid();
+      const id = await createDocument('teams', {
+        name: data.name,
+        slug: data.slug,
+        ownerId: uid,
+        avatarUrl: null,
+        plan: 'free',
+        members: [uid],
+      });
+      return { id, name: data.name } as Team;
+    },
     onSuccess: (team) => {
       toast.success(`Team "${team.name}" created`);
       qc.invalidateQueries({ queryKey: ['teams'] });
@@ -93,7 +113,7 @@ export function useUpdateTeam(teamId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: { name?: string; avatarUrl?: string }) =>
-      api.put<{ data: Team }>(`/teams/${teamId}`, data).then((r) => r.data),
+      updateDocument('teams', teamId, data),
     onSuccess: () => {
       toast.success('Team updated');
       qc.invalidateQueries({ queryKey: ['teams'] });
@@ -105,7 +125,7 @@ export function useUpdateTeam(teamId: string) {
 export function useDeleteTeam() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (teamId: string) => api.delete(`/teams/${teamId}`),
+    mutationFn: (teamId: string) => removeDocument('teams', teamId),
     onSuccess: () => {
       toast.success('Team deleted');
       qc.invalidateQueries({ queryKey: ['teams'] });
@@ -117,8 +137,15 @@ export function useDeleteTeam() {
 export function useInviteMember(teamId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: { email: string; role?: string }) =>
-      api.post<{ data: TeamInvitation }>(`/teams/${teamId}/invitations`, data).then((r) => r.data),
+    mutationFn: async (data: { email: string; role?: string }) => {
+      const id = await createSubDocument('teams', teamId, 'invitations', {
+        email: data.email,
+        role: data.role || 'member',
+        status: 'pending',
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      });
+      return { id, email: data.email } as TeamInvitation;
+    },
     onSuccess: (inv) => {
       toast.success(`Invitation sent to ${inv.email}`);
       qc.invalidateQueries({ queryKey: ['teams', teamId, 'invitations'] });
@@ -130,8 +157,9 @@ export function useInviteMember(teamId: string) {
 export function useUpdateMemberRole(teamId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: { memberId: string; role: string }) =>
-      api.put(`/teams/${teamId}/members/${data.memberId}`, { role: data.role }),
+    mutationFn: async (data: { memberId: string; role: string }) => {
+      await updateDocument(`teams/${teamId}/members`, data.memberId, { role: data.role });
+    },
     onSuccess: () => {
       toast.success('Role updated');
       qc.invalidateQueries({ queryKey: ['teams', teamId, 'members'] });
@@ -143,7 +171,7 @@ export function useUpdateMemberRole(teamId: string) {
 export function useRemoveMember(teamId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (memberId: string) => api.delete(`/teams/${teamId}/members/${memberId}`),
+    mutationFn: (memberId: string) => removeSubDocument('teams', teamId, 'members', memberId),
     onSuccess: () => {
       toast.success('Member removed');
       qc.invalidateQueries({ queryKey: ['teams', teamId, 'members'] });
@@ -155,7 +183,10 @@ export function useRemoveMember(teamId: string) {
 export function useLeaveTeam() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (teamId: string) => api.post(`/teams/${teamId}/leave`),
+    mutationFn: async (teamId: string) => {
+      const uid = requireUid();
+      await removeSubDocument('teams', teamId, 'members', uid);
+    },
     onSuccess: () => {
       toast.success('Left team');
       qc.invalidateQueries({ queryKey: ['teams'] });
@@ -167,7 +198,7 @@ export function useLeaveTeam() {
 export function useRevokeInvitation(teamId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (invitationId: string) => api.delete(`/teams/${teamId}/invitations/${invitationId}`),
+    mutationFn: (invitationId: string) => removeSubDocument('teams', teamId, 'invitations', invitationId),
     onSuccess: () => {
       toast.success('Invitation revoked');
       qc.invalidateQueries({ queryKey: ['teams', teamId, 'invitations'] });
@@ -179,10 +210,13 @@ export function useRevokeInvitation(teamId: string) {
 export function useAcceptInvitation() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (token: string) =>
-      api.post<{ data: Team }>('/teams/accept-invitation', { token }).then((r) => r.data),
+    mutationFn: async (_token: string) => {
+      // TODO: Cloud Function for accepting invitations by token
+      toast.info('Invitation acceptance requires backend setup');
+      return { name: '' } as Team;
+    },
     onSuccess: (team) => {
-      toast.success(`Joined team "${team.name}"`);
+      if (team.name) toast.success(`Joined team "${team.name}"`);
       qc.invalidateQueries({ queryKey: ['teams'] });
     },
     onError: (err: Error) => toast.error(err.message || 'Failed to accept invitation'),

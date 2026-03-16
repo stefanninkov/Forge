@@ -1,53 +1,123 @@
 import { create } from 'zustand';
+import {
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signInWithPopup,
+  GoogleAuthProvider,
+  signOut as firebaseSignOut,
+  updateProfile,
+  updateEmail as firebaseUpdateEmail,
+  updatePassword as firebaseUpdatePassword,
+  sendPasswordResetEmail,
+  type User as FirebaseUser,
+} from 'firebase/auth';
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { auth, db } from '@/lib/firebase';
 
-interface User {
-  id: string;
-  email: string;
-  name: string;
-  avatarUrl?: string;
-}
-
-interface AuthStore {
-  user: User | null;
-  accessToken: string | null;
+interface AuthState {
+  user: FirebaseUser | null;
+  isLoading: boolean;
   isAuthenticated: boolean;
   isRestoring: boolean;
-  setAuth: (user: User, accessToken: string) => void;
-  clearAuth: () => void;
-  restoreSession: () => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
+  register: (email: string, password: string, name: string) => Promise<void>;
+  loginWithGoogle: () => Promise<void>;
+  logout: () => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
+  updateName: (name: string) => Promise<void>;
+  updateEmail: (email: string) => Promise<void>;
+  updatePassword: (newPassword: string) => Promise<void>;
 }
 
-const API_BASE = (import.meta.env.VITE_API_URL as string) || '/api';
+export const useAuth = create<AuthState>((set) => {
+  // Listen for auth state changes — handles session restoration automatically
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      // Ensure user doc exists in Firestore
+      const userRef = doc(db, 'users', user.uid);
+      await setDoc(userRef, {
+        email: user.email,
+        displayName: user.displayName || '',
+        avatarUrl: user.photoURL || '',
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+    }
+    set({ user, isLoading: false, isAuthenticated: !!user, isRestoring: false });
+  });
 
-export const useAuth = create<AuthStore>((set, get) => ({
-  user: null,
-  accessToken: null,
-  isAuthenticated: false,
-  isRestoring: !!localStorage.getItem('forge-refresh-token'),
-  setAuth: (user, accessToken) =>
-    set({ user, accessToken, isAuthenticated: true, isRestoring: false }),
-  clearAuth: () => {
-    localStorage.removeItem('forge-refresh-token');
-    set({ user: null, accessToken: null, isAuthenticated: false, isRestoring: false });
-  },
-  restoreSession: async () => {
-    const refreshToken = localStorage.getItem('forge-refresh-token');
-    if (!refreshToken) {
-      set({ isRestoring: false });
-      return;
-    }
-    try {
-      const res = await fetch(`${API_BASE}/auth/refresh`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refreshToken }),
+  return {
+    user: null,
+    isLoading: true,
+    isAuthenticated: false,
+    isRestoring: true,
+
+    login: async (email, password) => {
+      await signInWithEmailAndPassword(auth, email, password);
+    },
+
+    register: async (email, password, name) => {
+      const cred = await createUserWithEmailAndPassword(auth, email, password);
+      await updateProfile(cred.user, { displayName: name });
+      await setDoc(doc(db, 'users', cred.user.uid), {
+        email,
+        displayName: name,
+        avatarUrl: '',
+        plan: 'free',
+        defaultUnit: 'px',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
       });
-      if (!res.ok) throw new Error('refresh failed');
-      const data = await res.json();
-      localStorage.setItem('forge-refresh-token', data.refreshToken);
-      get().setAuth(data.user, data.accessToken);
-    } catch {
-      get().clearAuth();
-    }
-  },
-}));
+    },
+
+    loginWithGoogle: async () => {
+      const provider = new GoogleAuthProvider();
+      const cred = await signInWithPopup(auth, provider);
+      await setDoc(doc(db, 'users', cred.user.uid), {
+        email: cred.user.email,
+        displayName: cred.user.displayName || '',
+        avatarUrl: cred.user.photoURL || '',
+        plan: 'free',
+        defaultUnit: 'px',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+    },
+
+    logout: async () => {
+      await firebaseSignOut(auth);
+    },
+
+    resetPassword: async (email) => {
+      await sendPasswordResetEmail(auth, email);
+    },
+
+    updateName: async (name) => {
+      const user = auth.currentUser;
+      if (!user) throw new Error('Not authenticated');
+      await updateProfile(user, { displayName: name });
+      await setDoc(doc(db, 'users', user.uid), {
+        displayName: name,
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+      set({ user: { ...user } as FirebaseUser });
+    },
+
+    updateEmail: async (email) => {
+      const user = auth.currentUser;
+      if (!user) throw new Error('Not authenticated');
+      await firebaseUpdateEmail(user, email);
+      await setDoc(doc(db, 'users', user.uid), {
+        email,
+        updatedAt: serverTimestamp(),
+      }, { merge: true });
+      set({ user: { ...user } as FirebaseUser });
+    },
+
+    updatePassword: async (newPassword) => {
+      const user = auth.currentUser;
+      if (!user) throw new Error('Not authenticated');
+      await firebaseUpdatePassword(user, newPassword);
+    },
+  };
+});

@@ -1,6 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { api } from '@/lib/api';
+import {
+  querySubcollection,
+  createSubDocument,
+  updateDocument,
+  removeDocument,
+  orderBy,
+} from '@/lib/firestore';
 
 interface AuditSchedule {
   id: string;
@@ -14,19 +20,11 @@ interface AuditSchedule {
   createdAt: string;
 }
 
-interface SchedulesResponse {
-  data: AuditSchedule[];
-}
-
-interface ScheduleResponse {
-  data: AuditSchedule;
-}
-
 export function useAuditSchedules(projectId: string | null) {
   return useQuery({
     queryKey: ['audit-schedules', projectId],
     queryFn: () =>
-      api.get<SchedulesResponse>(`/projects/${projectId}/schedules`).then((r) => r.data),
+      querySubcollection<AuditSchedule>('projects', projectId!, 'schedules', [orderBy('createdAt', 'desc')]),
     enabled: !!projectId,
   });
 }
@@ -34,7 +32,7 @@ export function useAuditSchedules(projectId: string | null) {
 export function useCreateAuditSchedule() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({
+    mutationFn: async ({
       projectId,
       type,
       url,
@@ -44,10 +42,11 @@ export function useCreateAuditSchedule() {
       type: 'SPEED' | 'SEO' | 'AEO';
       url: string;
       frequency: 'DAILY' | 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY';
-    }) =>
-      api
-        .post<ScheduleResponse>(`/projects/${projectId}/schedules`, { type, url, frequency })
-        .then((r) => r.data),
+    }) => {
+      await createSubDocument('projects', projectId, 'schedules', {
+        type, url, frequency, enabled: true, lastRunAt: null, nextRunAt: null, projectId,
+      });
+    },
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ['audit-schedules', vars.projectId] });
       toast.success('Audit schedule created');
@@ -59,7 +58,7 @@ export function useCreateAuditSchedule() {
 export function useUpdateAuditSchedule() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({
+    mutationFn: async ({
       scheduleId,
       ...data
     }: {
@@ -67,7 +66,9 @@ export function useUpdateAuditSchedule() {
       frequency?: 'DAILY' | 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY';
       url?: string;
       enabled?: boolean;
-    }) => api.put<ScheduleResponse>(`/schedules/${scheduleId}`, data).then((r) => r.data),
+    }) => {
+      await updateDocument('schedules', scheduleId, data);
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['audit-schedules'] });
       toast.success('Schedule updated');
@@ -79,7 +80,7 @@ export function useUpdateAuditSchedule() {
 export function useDeleteAuditSchedule() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (scheduleId: string) => api.delete(`/schedules/${scheduleId}`),
+    mutationFn: (scheduleId: string) => removeDocument('schedules', scheduleId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['audit-schedules'] });
       toast.success('Schedule deleted');

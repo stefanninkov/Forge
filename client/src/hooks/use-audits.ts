@@ -1,49 +1,35 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { api } from '@/lib/api';
+import { httpsCallable } from 'firebase/functions';
+import { functions } from '@/lib/firebase';
+import {
+  querySubcollection,
+  getDocument,
+  removeDocument,
+  updateDocument,
+  orderBy,
+  where,
+} from '@/lib/firestore';
 import type { Audit, AuditAlert, AuditHistoryPoint, AuditType } from '@/types/audit';
-
-interface AuditsResponse {
-  data: Audit[];
-}
-
-interface AuditResponse {
-  data: Audit;
-}
-
-interface HistoryResponse {
-  data: AuditHistoryPoint[];
-}
-
-interface AlertsResponse {
-  data: AuditAlert[];
-}
-
-interface AlertResponse {
-  data: AuditAlert;
-}
 
 /** List audits for a project, optionally filtered by type */
 export function useAudits(projectId: string | null, type?: AuditType) {
-  const params = new URLSearchParams();
-  if (type) params.set('type', type);
-  const qs = params.toString();
-
   return useQuery({
     queryKey: ['audits', 'list', projectId, type],
-    queryFn: () =>
-      api
-        .get<AuditsResponse>(`/projects/${projectId}/audits${qs ? `?${qs}` : ''}`)
-        .then((r) => r.data),
+    queryFn: async () => {
+      const constraints = [orderBy('createdAt', 'desc')];
+      if (type) constraints.unshift(where('type', '==', type));
+      return querySubcollection<Audit>('projects', projectId!, 'audits', constraints);
+    },
     enabled: !!projectId,
   });
 }
 
-/** Get a single audit by ID */
+/** Get a single audit by ID — looks in top-level audits or subcollection */
 export function useAudit(auditId: string | null) {
   return useQuery({
     queryKey: ['audits', 'detail', auditId],
-    queryFn: () => api.get<AuditResponse>(`/audits/${auditId}`).then((r) => r.data),
+    queryFn: () => getDocument<Audit>('audits', auditId!),
     enabled: !!auditId,
   });
 }
@@ -52,20 +38,29 @@ export function useAudit(auditId: string | null) {
 export function useAuditHistory(projectId: string | null, type: AuditType) {
   return useQuery({
     queryKey: ['audits', 'history', projectId, type],
-    queryFn: () =>
-      api
-        .get<HistoryResponse>(`/projects/${projectId}/audits/history?type=${type}`)
-        .then((r) => r.data),
+    queryFn: async () => {
+      const audits = await querySubcollection<Audit>(
+        'projects', projectId!, 'audits',
+        [where('type', '==', type), orderBy('createdAt', 'asc')],
+      );
+      return audits.map((a) => ({
+        date: a.createdAt,
+        score: a.score ?? 0,
+      })) as AuditHistoryPoint[];
+    },
     enabled: !!projectId,
   });
 }
 
-/** Run speed audit */
+/** Run speed audit — calls Cloud Function */
 export function useRunSpeedAudit() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ projectId, url }: { projectId: string; url: string }) =>
-      api.post<AuditResponse>(`/projects/${projectId}/audits/speed`, { url }).then((r) => r.data),
+    mutationFn: async ({ projectId, url }: { projectId: string; url: string }) => {
+      const fn = httpsCallable<{ projectId: string; url: string }, Audit>(functions, 'runSpeedAudit');
+      const result = await fn({ projectId, url });
+      return result.data;
+    },
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ['audits', 'list', vars.projectId, 'SPEED'] });
       qc.invalidateQueries({ queryKey: ['audits', 'history', vars.projectId, 'SPEED'] });
@@ -75,12 +70,15 @@ export function useRunSpeedAudit() {
   });
 }
 
-/** Run SEO audit */
+/** Run SEO audit — calls Cloud Function */
 export function useRunSeoAudit() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ projectId, url }: { projectId: string; url: string }) =>
-      api.post<AuditResponse>(`/projects/${projectId}/audits/seo`, { url }).then((r) => r.data),
+    mutationFn: async ({ projectId, url }: { projectId: string; url: string }) => {
+      const fn = httpsCallable<{ projectId: string; url: string }, Audit>(functions, 'runSeoAudit');
+      const result = await fn({ projectId, url });
+      return result.data;
+    },
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ['audits', 'list', vars.projectId, 'SEO'] });
       qc.invalidateQueries({ queryKey: ['audits', 'history', vars.projectId, 'SEO'] });
@@ -90,12 +88,15 @@ export function useRunSeoAudit() {
   });
 }
 
-/** Run AEO audit */
+/** Run AEO audit — calls Cloud Function */
 export function useRunAeoAudit() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ projectId, url }: { projectId: string; url: string }) =>
-      api.post<AuditResponse>(`/projects/${projectId}/audits/aeo`, { url }).then((r) => r.data),
+    mutationFn: async ({ projectId, url }: { projectId: string; url: string }) => {
+      const fn = httpsCallable<{ projectId: string; url: string }, Audit>(functions, 'runAeoAudit');
+      const result = await fn({ projectId, url });
+      return result.data;
+    },
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ['audits', 'list', vars.projectId, 'AEO'] });
       qc.invalidateQueries({ queryKey: ['audits', 'history', vars.projectId, 'AEO'] });
@@ -109,7 +110,7 @@ export function useRunAeoAudit() {
 export function useDeleteAudit() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => api.delete(`/audits/${id}`),
+    mutationFn: (id: string) => removeDocument('audits', id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['audits'] });
       toast.success('Audit deleted');
@@ -122,7 +123,8 @@ export function useDeleteAudit() {
 export function useAlerts(projectId: string | null) {
   return useQuery({
     queryKey: ['alerts', projectId],
-    queryFn: () => api.get<AlertsResponse>(`/projects/${projectId}/alerts`).then((r) => r.data),
+    queryFn: () =>
+      querySubcollection<AuditAlert>('projects', projectId!, 'alerts', [orderBy('createdAt', 'desc')]),
     enabled: !!projectId,
   });
 }
@@ -131,7 +133,7 @@ export function useAlerts(projectId: string | null) {
 export function useMarkAlertRead() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => api.put<AlertResponse>(`/alerts/${id}/read`, {}),
+    mutationFn: (id: string) => updateDocument('alerts', id, { read: true }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['alerts'] });
     },
@@ -149,14 +151,13 @@ interface AiRecommendation {
   affectedUrls?: string[];
 }
 
-interface AiRecommendationsResponse {
-  data: AiRecommendation[];
-}
-
 export function useAiRecommendations() {
   return useMutation({
-    mutationFn: (auditId: string) =>
-      api.post<AiRecommendationsResponse>(`/audits/${auditId}/ai-recommendations`, {}).then((r) => r.data),
+    mutationFn: async (auditId: string) => {
+      const fn = httpsCallable<{ auditId: string }, AiRecommendation[]>(functions, 'getAiRecommendations');
+      const result = await fn({ auditId });
+      return result.data;
+    },
     onError: (err: Error) => {
       toast.error(err.message || 'Failed to generate AI recommendations');
     },

@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AppLayout } from '@/components/layout/app-layout';
 import { Toaster } from '@/components/ui/toaster';
 import { useAuth } from '@/hooks/use-auth';
-import { lazy, Suspense, useEffect, type ReactNode } from 'react';
+import { lazy, Suspense, type ReactNode } from 'react';
 
 const DashboardPage = lazy(() => import('@/pages/dashboard'));
 const SetupPage = lazy(() => import('@/pages/setup'));
@@ -102,12 +102,7 @@ function PublicRoute({ children }: { children: ReactNode }) {
 }
 
 export default function App() {
-  const restoreSession = useAuth((s) => s.restoreSession);
-
-  useEffect(() => {
-    restoreSession();
-  }, [restoreSession]);
-
+  // Firebase onAuthStateChanged handles session restoration automatically
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, '')}>

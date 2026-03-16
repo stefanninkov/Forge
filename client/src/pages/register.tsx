@@ -1,19 +1,26 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { api, ApiError } from '@/lib/api';
 import { useAuth } from '@/hooks/use-auth';
 import { usePageTitle } from '@/hooks/use-page-title';
+import { FirebaseError } from 'firebase/app';
 
-interface AuthResponse {
-  user: { id: string; email: string; name: string };
-  accessToken: string;
-  refreshToken: string;
+function getFirebaseErrorMessage(code: string): string {
+  switch (code) {
+    case 'auth/email-already-in-use':
+      return 'An account with this email already exists';
+    case 'auth/invalid-email':
+      return 'Invalid email address';
+    case 'auth/weak-password':
+      return 'Password must be at least 6 characters';
+    default:
+      return 'An unexpected error occurred';
+  }
 }
 
 export default function RegisterPage() {
   usePageTitle('Register');
   const navigate = useNavigate();
-  const { setAuth } = useAuth();
+  const { register } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -26,13 +33,11 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      const data = await api.post<AuthResponse>('/auth/register', { name, email, password });
-      localStorage.setItem('forge-refresh-token', data.refreshToken);
-      setAuth(data.user, data.accessToken);
+      await register(email, password, name);
       navigate('/');
     } catch (err) {
-      if (err instanceof ApiError) {
-        setError(err.message);
+      if (err instanceof FirebaseError) {
+        setError(getFirebaseErrorMessage(err.code));
       } else {
         setError('An unexpected error occurred');
       }

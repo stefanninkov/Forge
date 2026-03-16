@@ -2,7 +2,8 @@ import { useState, useCallback } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Code, Loader2, AlertTriangle, AlertCircle, Info, CheckCircle, Shield, Zap, Globe, Eye, Sparkles } from 'lucide-react';
-import { api } from '@/lib/api';
+import { httpsCallable } from 'firebase/functions';
+import { functions } from '@/lib/firebase';
 
 interface CodeReviewIssue {
   severity: 'error' | 'warning' | 'info';
@@ -47,7 +48,7 @@ export function CodeReviewPanel() {
 
   const reviewMutation = useMutation({
     mutationFn: (input: { code: string; codeType: string }) =>
-      api.post<{ data: CodeReviewResult }>('/ai/code-review', input).then((r) => r.data),
+      httpsCallable<typeof input, CodeReviewResult>(functions, 'aiCodeReview')(input).then((r) => r.data),
     onSuccess: (data) => setResult(data),
     onError: (err: Error) => toast.error(err.message || 'Code review failed'),
   });

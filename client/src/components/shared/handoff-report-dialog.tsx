@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { useProjectNotes } from '@/hooks/use-projects';
 import { useProjectScores } from '@/hooks/use-project-scores';
 import { useQuery } from '@tanstack/react-query';
-import { api } from '@/lib/api';
+import { getDocument, querySubcollection } from '@/lib/firestore';
 import type { Project } from '@/types/project';
 
 export interface HandoffReportDialogProps {
@@ -23,11 +23,15 @@ interface AnimationCount {
   count: number;
 }
 
+interface SetupProgressItem {
+  id: string;
+  status: string;
+}
+
 function useProject(projectId: string | null) {
   return useQuery({
     queryKey: ['project', projectId],
-    queryFn: () =>
-      api.get<{ data: Project }>(`/projects/${projectId}`).then((r) => r.data),
+    queryFn: () => getDocument<Project>('projects', projectId!),
     enabled: !!projectId,
   });
 }
@@ -35,10 +39,13 @@ function useProject(projectId: string | null) {
 function useSetupProgress(projectId: string | null) {
   return useQuery({
     queryKey: ['setup-progress', projectId],
-    queryFn: () =>
-      api
-        .get<{ data: SetupProgress }>(`/projects/${projectId}/setup/progress`)
-        .then((r) => r.data),
+    queryFn: async (): Promise<SetupProgress> => {
+      const items = await querySubcollection<SetupProgressItem>(
+        'projects', projectId!, 'setupProgress',
+      );
+      const completed = items.filter((i) => i.status === 'COMPLETED').length;
+      return { completed, total: items.length };
+    },
     enabled: !!projectId,
     retry: false,
   });
@@ -47,10 +54,13 @@ function useSetupProgress(projectId: string | null) {
 function useAnimationCount(projectId: string | null) {
   return useQuery({
     queryKey: ['animation-count', projectId],
-    queryFn: () =>
-      api
-        .get<{ data: AnimationCount }>(`/projects/${projectId}/animations/count`)
-        .then((r) => r.data),
+    queryFn: async (): Promise<AnimationCount> => {
+      const project = await getDocument<{ animationConfig?: { presets?: unknown[] } }>(
+        'projects', projectId!,
+      );
+      const count = project?.animationConfig?.presets?.length ?? 0;
+      return { count };
+    },
     enabled: !!projectId,
     retry: false,
   });

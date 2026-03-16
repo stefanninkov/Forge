@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useActiveProject } from './use-active-project';
-import { api } from '@/lib/api';
+import { getDocument, updateDocument } from '@/lib/firestore';
 import { toast } from 'sonner';
 
 export interface ScalingConfig {
@@ -29,6 +29,10 @@ const DEFAULT_CONFIG: ScalingConfig = {
   defaultUnit: 'px',
 };
 
+interface ProjectDoc {
+  scalingConfig?: ScalingConfig;
+}
+
 export function useScalingSystem() {
   const { activeProjectId } = useActiveProject();
   const queryClient = useQueryClient();
@@ -36,19 +40,18 @@ export function useScalingSystem() {
   const { data: config } = useQuery({
     queryKey: ['scaling', activeProjectId],
     queryFn: async () => {
-      try {
-        const res = await api.get<{ data: { config: ScalingConfig } }>(`/projects/${activeProjectId}/scaling`);
-        return res.data.config ?? DEFAULT_CONFIG;
-      } catch {
-        return DEFAULT_CONFIG;
-      }
+      if (!activeProjectId) return DEFAULT_CONFIG;
+      const project = await getDocument<ProjectDoc>('projects', activeProjectId);
+      return project?.scalingConfig ?? DEFAULT_CONFIG;
     },
     enabled: !!activeProjectId,
   });
 
   const updateConfig = useMutation({
     mutationFn: async (newConfig: Partial<ScalingConfig>) => {
-      await api.put(`/projects/${activeProjectId}/scaling`, { config: { ...(config ?? DEFAULT_CONFIG), ...newConfig } });
+      if (!activeProjectId) throw new Error('No active project');
+      const merged = { ...(config ?? DEFAULT_CONFIG), ...newConfig };
+      await updateDocument('projects', activeProjectId, { scalingConfig: merged });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['scaling', activeProjectId] });

@@ -1,32 +1,37 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '@/lib/api';
+import { httpsCallable } from 'firebase/functions';
+import { functions } from '@/lib/firebase';
+import {
+  getDocument,
+  updateDocument,
+  querySubcollection,
+  orderBy,
+} from '@/lib/firestore';
 import type { FigmaAnalysis } from '@/types/figma';
 
-interface AnalyzeResponse {
-  data: FigmaAnalysis;
-}
-
-interface AiSuggestResponse {
-  data: Record<string, unknown>;
-}
-
-/** Analyze a Figma file */
+/** Analyze a Figma file — calls Cloud Function */
 export function useAnalyzeFigma() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: { projectId: string; figmaUrl: string; pageName?: string }) =>
-      api.post<AnalyzeResponse>('/figma/analyze', data).then((r) => r.data),
+    mutationFn: async (data: { projectId: string; figmaUrl: string; pageName?: string }) => {
+      const fn = httpsCallable<typeof data, FigmaAnalysis>(functions, 'analyzeFigma');
+      const result = await fn(data);
+      return result.data;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['figma-analyses'] });
     },
   });
 }
 
-/** Run AI suggestions on an analysis */
+/** Run AI suggestions on an analysis — calls Cloud Function */
 export function useAiSuggest() {
   return useMutation({
-    mutationFn: (analysisId: string) =>
-      api.post<AiSuggestResponse>('/figma/ai-suggest', { analysisId }).then((r) => r.data),
+    mutationFn: async (analysisId: string) => {
+      const fn = httpsCallable<{ analysisId: string }, Record<string, unknown>>(functions, 'suggestClassNames');
+      const result = await fn({ analysisId });
+      return result.data;
+    },
   });
 }
 
@@ -34,8 +39,7 @@ export function useAiSuggest() {
 export function useFigmaAnalysis(analysisId: string | null) {
   return useQuery({
     queryKey: ['figma-analysis', analysisId],
-    queryFn: () =>
-      api.get<{ data: FigmaAnalysis }>(`/figma/analyses/${analysisId}`).then((r) => r.data),
+    queryFn: () => getDocument<FigmaAnalysis>('figmaAnalyses', analysisId!),
     enabled: !!analysisId,
   });
 }
@@ -45,7 +49,7 @@ export function useUpdateAnalysis() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, finalStructure }: { id: string; finalStructure: Record<string, unknown> }) =>
-      api.put(`/figma/analyses/${id}`, { finalStructure }),
+      updateDocument('figmaAnalyses', id, { finalStructure }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['figma-analyses'] });
     },

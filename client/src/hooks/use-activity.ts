@@ -1,5 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
-import { api } from '@/lib/api';
+import {
+  queryUserDocs,
+  querySubcollection,
+  orderBy,
+  where,
+  limit as fsLimit,
+} from '@/lib/firestore';
 import type { ActivityLog, ActivityAction } from '@/types/project';
 
 interface ActivityFilters {
@@ -9,23 +15,26 @@ interface ActivityFilters {
   offset?: number;
 }
 
-interface ActivityResponse {
-  data: ActivityLog[];
-  total: number;
-}
-
 export function useActivityLog(filters: ActivityFilters = {}) {
-  const params = new URLSearchParams();
-  if (filters.action) params.set('action', filters.action);
-  if (filters.projectId) params.set('projectId', filters.projectId);
-  if (filters.limit) params.set('limit', String(filters.limit));
-  if (filters.offset) params.set('offset', String(filters.offset));
-
-  const queryString = params.toString();
-  const path = `/activity${queryString ? `?${queryString}` : ''}`;
-
   return useQuery({
     queryKey: ['activity', filters],
-    queryFn: () => api.get<ActivityResponse>(path),
+    queryFn: async () => {
+      if (filters.projectId) {
+        // Activity for a specific project (subcollection)
+        const constraints = [orderBy('createdAt', 'desc')];
+        if (filters.action) constraints.unshift(where('actionType', '==', filters.action));
+        if (filters.limit) constraints.push(fsLimit(filters.limit));
+        const data = await querySubcollection<ActivityLog>(
+          'projects', filters.projectId, 'activityLog', constraints,
+        );
+        return { data, total: data.length };
+      }
+      // Global activity (top-level collection)
+      const constraints = [orderBy('createdAt', 'desc')];
+      if (filters.action) constraints.unshift(where('actionType', '==', filters.action));
+      if (filters.limit) constraints.push(fsLimit(filters.limit));
+      const data = await queryUserDocs<ActivityLog>('activityLog', constraints);
+      return { data, total: data.length };
+    },
   });
 }

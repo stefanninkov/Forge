@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
-import { api } from '@/lib/api';
+import { useAuth } from '@/hooks/use-auth';
 import { usePageTitle } from '@/hooks/use-page-title';
 import { ArrowLeft } from 'lucide-react';
 
@@ -19,6 +19,7 @@ const inputStyle = {
 
 export default function ForgotPasswordPage() {
   usePageTitle('Forgot Password');
+  const { resetPassword } = useAuth();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -27,7 +28,7 @@ export default function ForgotPasswordPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      await api.post('/auth/forgot-password', { email });
+      await resetPassword(email);
     } catch {
       // Silently ignore — don't reveal if email exists
     } finally {

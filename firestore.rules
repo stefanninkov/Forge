@@ -1,0 +1,117 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper: check if the requester is authenticated
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    // Helper: check if the requester owns the document
+    function isOwner(userId) {
+      return isAuth() && request.auth.uid == userId;
+    }
+
+    // Users collection
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // Projects collection
+    match /projects/{projectId} {
+      allow read, write: if isAuth() && resource.data.userId == request.auth.uid;
+      allow create: if isAuth() && request.resource.data.userId == request.auth.uid;
+
+      // Project subcollections
+      match /audits/{auditId} {
+        allow read, write: if isAuth();
+      }
+      match /setupProgress/{itemId} {
+        allow read, write: if isAuth();
+      }
+      match /activityLog/{logId} {
+        allow read, write: if isAuth();
+      }
+      match /schedules/{scheduleId} {
+        allow read, write: if isAuth();
+      }
+      match /scriptVersions/{versionId} {
+        allow read, write: if isAuth();
+      }
+    }
+
+    // Templates collection
+    match /templates/{templateId} {
+      allow read: if isAuth();
+      allow write: if isAuth() && (
+        resource == null || resource.data.userId == request.auth.uid
+      );
+      allow create: if isAuth();
+    }
+
+    // Animation presets
+    match /animationPresets/{presetId} {
+      allow read: if isAuth();
+      allow write: if isAuth() && (
+        resource == null || resource.data.userId == request.auth.uid || resource.data.isSystem == true
+      );
+      allow create: if isAuth();
+    }
+
+    // Setup profiles
+    match /setupProfiles/{profileId} {
+      allow read, write: if isAuth() && resource.data.userId == request.auth.uid;
+      allow create: if isAuth() && request.resource.data.userId == request.auth.uid;
+    }
+
+    // Figma analyses
+    match /figmaAnalyses/{analysisId} {
+      allow read, write: if isAuth();
+    }
+
+    // Handoff reports
+    match /handoffReports/{reportId} {
+      // Owner can do anything
+      allow read, write: if isAuth() && resource.data.userId == request.auth.uid;
+      allow create: if isAuth() && request.resource.data.userId == request.auth.uid;
+      // Public reports can be read by anyone via shareToken
+      allow read: if resource.data.isPublic == true;
+    }
+
+    // Favorites
+    match /favorites/{favoriteId} {
+      allow read, write: if isAuth() && resource.data.userId == request.auth.uid;
+      allow create: if isAuth() && request.resource.data.userId == request.auth.uid;
+    }
+
+    // Activity log (global)
+    match /activityLog/{logId} {
+      allow read: if isAuth() && resource.data.userId == request.auth.uid;
+      allow create: if isAuth() && request.resource.data.userId == request.auth.uid;
+    }
+
+    // Notification preferences
+    match /notificationPreferences/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // Teams
+    match /teams/{teamId} {
+      allow read: if isAuth();
+      allow write: if isAuth();
+
+      match /members/{memberId} {
+        allow read, write: if isAuth();
+      }
+      match /invitations/{invitationId} {
+        allow read, write: if isAuth();
+      }
+    }
+
+    // Schedules (top-level for update/delete by ID)
+    match /schedules/{scheduleId} {
+      allow read, write: if isAuth();
+    }
+  }
+}

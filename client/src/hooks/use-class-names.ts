@@ -1,5 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
-import { api } from '@/lib/api';
+import { httpsCallable } from 'firebase/functions';
+import { functions } from '@/lib/firebase';
 
 interface ClassNameSuggestion {
   originalName: string;
@@ -19,10 +20,11 @@ interface ClassNameResponse {
 
 export function useAiClassNames() {
   return useMutation({
-    mutationFn: ({ elements, methodology }: ClassNameRequest) =>
-      api
-        .post<ClassNameResponse>('/ai/class-names', { elements, methodology })
-        .then((r) => r.suggestions),
+    mutationFn: async ({ elements, methodology }: ClassNameRequest) => {
+      const fn = httpsCallable<ClassNameRequest, ClassNameResponse>(functions, 'suggestClassNames');
+      const result = await fn({ elements, methodology });
+      return result.data.suggestions;
+    },
   });
 }
 

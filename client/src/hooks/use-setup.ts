@@ -1,25 +1,35 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { api } from '@/lib/api';
-import type { SetupData, SetupProfile } from '@/types/setup';
+import { writeBatch } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import {
+  queryUserDocs,
+  querySubcollection,
+  getDocument,
+  createDocument,
+  removeDocument,
+  setDocument,
+  serverTimestamp,
+  doc,
+  orderBy,
+} from '@/lib/firestore';
+import type { SetupProfile, SetupStatus } from '@/types/setup';
 
-interface SetupResponse {
-  data: SetupData;
-}
-
-interface ProfilesResponse {
-  data: SetupProfile[];
-}
-
-interface ProfileResponse {
-  data: SetupProfile;
+interface SetupProgressItem {
+  id: string;
+  status: SetupStatus;
+  completedAt: string | null;
 }
 
 export function useSetupProgress(projectId: string | null) {
   return useQuery({
     queryKey: ['setup', projectId],
     queryFn: () =>
-      api.get<SetupResponse>(`/projects/${projectId}/setup`).then((r) => r.data),
+      querySubcollection<SetupProgressItem>(
+        'projects',
+        projectId!,
+        'setupProgress',
+      ),
     enabled: !!projectId,
   });
 }
@@ -27,8 +37,16 @@ export function useSetupProgress(projectId: string | null) {
 export function useUpdateSetupItem(projectId: string | null) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ itemKey, status }: { itemKey: string; status: 'COMPLETED' | 'PENDING' | 'SKIPPED' }) =>
-      api.put(`/projects/${projectId}/setup/${itemKey}`, { status }),
+    mutationFn: async ({ itemKey, status }: { itemKey: string; status: SetupStatus }) => {
+      if (!projectId) throw new Error('No project selected');
+      const data: Record<string, unknown> = { status };
+      if (status === 'COMPLETED') {
+        data.completedAt = serverTimestamp();
+      } else {
+        data.completedAt = null;
+      }
+      await setDocument(`projects/${projectId}/setupProgress`, itemKey, data);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['setup', projectId] });
     },
@@ -38,7 +56,20 @@ export function useUpdateSetupItem(projectId: string | null) {
 export function useResetSetupProgress(projectId: string | null) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: () => api.post(`/projects/${projectId}/setup/reset`),
+    mutationFn: async () => {
+      if (!projectId) throw new Error('No project selected');
+      const items = await querySubcollection<SetupProgressItem>(
+        'projects',
+        projectId,
+        'setupProgress',
+      );
+      const batch = writeBatch(db);
+      for (const item of items) {
+        const ref = doc(db, 'projects', projectId, 'setupProgress', item.id);
+        batch.delete(ref);
+      }
+      await batch.commit();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['setup', projectId] });
       toast.success('Setup progress reset');
@@ -51,15 +82,22 @@ export function useSetupProfiles() {
   return useQuery({
     queryKey: ['setup-profiles'],
     queryFn: () =>
-      api.get<ProfilesResponse>('/setup-profiles').then((r) => r.data),
+      queryUserDocs<SetupProfile>('setupProfiles', [
+        orderBy('createdAt', 'desc'),
+      ]),
   });
 }
 
 export function useCreateProfile() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: { name: string; checklistConfig: Record<string, boolean> }) =>
-      api.post<ProfileResponse>('/setup-profiles', data).then((r) => r.data),
+    mutationFn: async (data: { name: string; checklistConfig: Record<string, boolean> }) => {
+      const id = await createDocument('setupProfiles', {
+        name: data.name,
+        checklistConfig: data.checklistConfig,
+      });
+      return { id, ...data } as SetupProfile & { id: string };
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['setup-profiles'] });
       toast.success('Profile saved');
@@ -71,7 +109,7 @@ export function useCreateProfile() {
 export function useDeleteProfile() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (profileId: string) => api.delete(`/setup-profiles/${profileId}`),
+    mutationFn: (profileId: string) => removeDocument('setupProfiles', profileId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['setup-profiles'] });
       toast.success('Profile deleted');
@@ -83,8 +121,22 @@ export function useDeleteProfile() {
 export function useApplyProfile(projectId: string | null) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (profileId: string) =>
-      api.post(`/projects/${projectId}/setup/apply-profile`, { profileId }),
+    mutationFn: async (profileId: string) => {
+      if (!projectId) throw new Error('No project selected');
+      const profile = await getDocument<SetupProfile>('setupProfiles', profileId);
+      if (!profile) throw new Error('Profile not found');
+
+      const batch = writeBatch(db);
+      for (const [itemKey, enabled] of Object.entries(profile.checklistConfig)) {
+        const ref = doc(db, 'projects', projectId, 'setupProgress', itemKey);
+        batch.set(ref, {
+          status: enabled ? 'COMPLETED' : 'PENDING',
+          completedAt: enabled ? serverTimestamp() : null,
+          updatedAt: serverTimestamp(),
+        }, { merge: true });
+      }
+      await batch.commit();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['setup', projectId] });
       toast.success('Profile applied');

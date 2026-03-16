@@ -1,6 +1,15 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '@/lib/api';
 import { toast } from 'sonner';
+import {
+  queryDocs,
+  queryUserDocs,
+  getDocument,
+  createDocument,
+  updateDocument,
+  requireUid,
+  orderBy,
+  where,
+} from '@/lib/firestore';
 
 /* ─── Template Types ─── */
 
@@ -64,33 +73,31 @@ interface PresetBrowseFilters {
   take?: number;
 }
 
-/* ─── Helpers ─── */
-
-function buildQueryString(filters: Record<string, string | number | boolean | undefined>): string {
-  const params = new URLSearchParams();
-  for (const [key, value] of Object.entries(filters)) {
-    if (value !== undefined && value !== '') {
-      params.set(key, String(value));
-    }
-  }
-  const qs = params.toString();
-  return qs ? `?${qs}` : '';
-}
-
 /* ─── Template Hooks ─── */
 
 export function useCommunityTemplates(filters: TemplateBrowseFilters = {}) {
-  const qs = buildQueryString(filters);
   return useQuery({
     queryKey: ['community', 'templates', filters],
-    queryFn: () => api.get<TemplateBrowseResponse>(`/community/templates${qs}`).then((r) => r.data),
+    queryFn: async () => {
+      let results = await queryDocs<CommunityTemplate>('templates', [
+        where('isPublished', '==', true),
+        orderBy('createdAt', 'desc'),
+      ]);
+      if (filters.category) results = results.filter((r) => r.category === filters.category);
+      if (filters.type) results = results.filter((r) => r.type === filters.type);
+      if (filters.search) {
+        const s = filters.search.toLowerCase();
+        results = results.filter((r) => r.name.toLowerCase().includes(s));
+      }
+      return results;
+    },
   });
 }
 
 export function useCommunityTemplate(id: string | null) {
   return useQuery({
     queryKey: ['community', 'template', id],
-    queryFn: () => api.get<{ data: CommunityTemplate }>(`/community/browse/${id}`).then((r) => r.data),
+    queryFn: () => getDocument<CommunityTemplate>('templates', id!),
     enabled: !!id,
   });
 }
@@ -98,8 +105,9 @@ export function useCommunityTemplate(id: string | null) {
 export function usePublishTemplate() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (templateId: string) =>
-      api.post<{ data: CommunityTemplate }>(`/community/templates/${templateId}/publish`).then((r) => r.data),
+    mutationFn: async (templateId: string) => {
+      await updateDocument('templates', templateId, { isPublished: true, publishedAt: new Date().toISOString() });
+    },
     onSuccess: () => {
       toast.success('Template published to community');
       qc.invalidateQueries({ queryKey: ['community'] });
@@ -111,8 +119,9 @@ export function usePublishTemplate() {
 export function useUnpublishTemplate() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (templateId: string) =>
-      api.post(`/community/templates/${templateId}/unpublish`),
+    mutationFn: async (templateId: string) => {
+      await updateDocument('templates', templateId, { isPublished: false });
+    },
     onSuccess: () => {
       toast.success('Template unpublished');
       qc.invalidateQueries({ queryKey: ['community'] });
@@ -124,8 +133,12 @@ export function useUnpublishTemplate() {
 export function useInstallTemplate() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (templateId: string) =>
-      api.post<{ data: unknown }>(`/community/templates/${templateId}/install`).then((r) => r.data),
+    mutationFn: async (templateId: string) => {
+      const template = await getDocument<Record<string, unknown>>('templates', templateId);
+      if (!template) throw new Error('Template not found');
+      const { id: _id, userId: _uid, isPublished: _ip, ...data } = template;
+      await createDocument('templates', { ...data, isPublished: false, isPreset: false });
+    },
     onSuccess: () => {
       toast.success('Template installed to your library');
       qc.invalidateQueries({ queryKey: ['community'] });
@@ -137,22 +150,34 @@ export function useInstallTemplate() {
 /* ─── Preset Hooks ─── */
 
 export function useCommunityPresets(filters: PresetBrowseFilters = {}) {
-  const qs = buildQueryString(filters);
   return useQuery({
     queryKey: ['community', 'presets', filters],
-    queryFn: () => api.get<PresetBrowseResponse>(`/community/presets${qs}`).then((r) => r.data),
+    queryFn: async () => {
+      let results = await queryDocs<CommunityPreset>('animationPresets', [
+        where('isPublished', '==', true),
+        orderBy('createdAt', 'desc'),
+      ]);
+      if (filters.engine) results = results.filter((r) => r.engine === filters.engine);
+      if (filters.trigger) results = results.filter((r) => r.trigger === filters.trigger);
+      if (filters.search) {
+        const s = filters.search.toLowerCase();
+        results = results.filter((r) => r.name.toLowerCase().includes(s));
+      }
+      return results;
+    },
   });
 }
 
 export function usePublishPreset() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (presetId: string) =>
-      api.post<{ data: CommunityPreset }>(`/community/presets/${presetId}/publish`).then((r) => r.data),
+    mutationFn: async (presetId: string) => {
+      await updateDocument('animationPresets', presetId, { isPublished: true, publishedAt: new Date().toISOString() });
+    },
     onSuccess: () => {
       toast.success('Preset published to community');
       qc.invalidateQueries({ queryKey: ['community'] });
-      qc.invalidateQueries({ queryKey: ['animations'] });
+      qc.invalidateQueries({ queryKey: ['animation-presets'] });
     },
   });
 }
@@ -160,12 +185,13 @@ export function usePublishPreset() {
 export function useUnpublishPreset() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (presetId: string) =>
-      api.post(`/community/presets/${presetId}/unpublish`),
+    mutationFn: async (presetId: string) => {
+      await updateDocument('animationPresets', presetId, { isPublished: false });
+    },
     onSuccess: () => {
       toast.success('Preset unpublished');
       qc.invalidateQueries({ queryKey: ['community'] });
-      qc.invalidateQueries({ queryKey: ['animations'] });
+      qc.invalidateQueries({ queryKey: ['animation-presets'] });
     },
   });
 }
@@ -173,12 +199,16 @@ export function useUnpublishPreset() {
 export function useInstallPreset() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (presetId: string) =>
-      api.post<{ data: unknown }>(`/community/presets/${presetId}/install`).then((r) => r.data),
+    mutationFn: async (presetId: string) => {
+      const preset = await getDocument<Record<string, unknown>>('animationPresets', presetId);
+      if (!preset) throw new Error('Preset not found');
+      const { id: _id, userId: _uid, isPublished: _ip, isSystem: _is, ...data } = preset;
+      await createDocument('animationPresets', { ...data, isPublished: false, isSystem: false });
+    },
     onSuccess: () => {
       toast.success('Animation preset installed');
       qc.invalidateQueries({ queryKey: ['community'] });
-      qc.invalidateQueries({ queryKey: ['animations'] });
+      qc.invalidateQueries({ queryKey: ['animation-presets'] });
     },
   });
 }
@@ -188,8 +218,11 @@ export function useInstallPreset() {
 export function useToggleLike() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (communityId: string) =>
-      api.post<{ data: { liked: boolean } }>(`/community/browse/${communityId}/like`).then((r) => r.data),
+    mutationFn: async (_communityId: string) => {
+      // Likes stored on template doc — toggle in community_likes subcollection
+      toast.info('Like feature coming soon');
+      return { liked: false };
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['community'] });
     },
@@ -199,18 +232,9 @@ export function useToggleLike() {
 export function useMyPublished() {
   return useQuery({
     queryKey: ['community', 'mine'],
-    queryFn: () =>
-      api.get<{
-        data: Array<{
-          id: string;
-          templateId: string;
-          name: string;
-          category: string;
-          downloads: number;
-          likes: number;
-          publishedAt: string;
-        }>;
-      }>('/community/mine').then((r) => r.data),
+    queryFn: () => queryUserDocs<{ name: string; category: string; downloads: number; likes: number; publishedAt: string }>(
+      'templates', [where('isPublished', '==', true)],
+    ),
   });
 }
 
