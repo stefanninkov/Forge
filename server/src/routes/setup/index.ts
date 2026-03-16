@@ -64,18 +64,23 @@ export async function setupRoutes(app: FastifyInstance) {
     return reply.send({ success: true });
   });
 
-  // POST /api/projects/:id/setup/execute/:item — Auto-execute via MCP (stub)
+  // POST /api/projects/:id/setup/execute/:item — Auto-execute via MCP
   app.post('/:id/setup/execute/:item', async (request, reply) => {
     const params = itemKeyParam.safeParse(request.params);
     if (!params.success) throw new ValidationError(params.error.flatten().fieldErrors);
 
-    // MCP execution is a future feature — for now, return stub
-    return reply.status(501).send({
-      error: {
-        code: 'NOT_IMPLEMENTED',
-        message: 'MCP auto-execution is not yet available. Mark the item as completed manually.',
-      },
+    const bodySchema = z.object({ siteId: z.string().min(1) });
+    const body = bodySchema.safeParse(request.body);
+    if (!body.success) throw new ValidationError(body.error.flatten().fieldErrors);
+
+    const { executeSetupItem } = await import('../../services/mcp-service.js');
+    const result = await executeSetupItem({
+      userId: request.user.userId,
+      projectId: params.data.id,
+      itemKey: params.data.item,
+      siteId: body.data.siteId,
     });
+    return reply.send({ data: result });
   });
 }
 

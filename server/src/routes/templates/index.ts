@@ -1,4 +1,5 @@
 import { FastifyInstance } from 'fastify';
+import { z } from 'zod';
 import { requireAuth } from '../../middleware/auth.js';
 import * as templateService from '../../services/template-service.js';
 import { ValidationError } from '../../utils/errors.js';
@@ -75,11 +76,28 @@ export async function templateRoutes(app: FastifyInstance) {
     return reply.status(201).send({ data: template });
   });
 
-  // POST /api/templates/:id/push — Push to Webflow via MCP (stub)
-  app.post('/:id/push', async (_request, reply) => {
-    return reply.status(501).send({
-      error: { code: 'NOT_IMPLEMENTED', message: 'Push to Webflow requires MCP connection.' },
+  // POST /api/templates/:id/push — Push to Webflow via MCP
+  app.post('/:id/push', async (request, reply) => {
+    const params = templateIdSchema.safeParse(request.params);
+    if (!params.success) throw new ValidationError(params.error.flatten().fieldErrors);
+
+    const pushSchema = z.object({
+      siteId: z.string().min(1),
+      pageId: z.string().min(1),
+      parentNodeId: z.string().optional(),
     });
+    const body = pushSchema.safeParse(request.body);
+    if (!body.success) throw new ValidationError(body.error.flatten().fieldErrors);
+
+    const { pushTemplate } = await import('../../services/mcp-service.js');
+    const result = await pushTemplate({
+      userId: request.user.userId,
+      templateId: params.data.id,
+      siteId: body.data.siteId,
+      pageId: body.data.pageId,
+      parentNodeId: body.data.parentNodeId,
+    });
+    return reply.send({ data: result });
   });
 
   // POST /api/templates/seed — Seed preset templates (dev utility)

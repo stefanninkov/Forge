@@ -8,6 +8,7 @@ import {
   updateAnalysisSchema,
   analysisIdSchema,
 } from './schemas.js';
+import { z } from 'zod';
 
 export async function figmaRoutes(app: FastifyInstance) {
   app.addHook('preHandler', requireAuth);
@@ -63,16 +64,27 @@ export async function figmaRoutes(app: FastifyInstance) {
     return reply.send({ data: analysis });
   });
 
-  // POST /api/figma/analyses/:id/push — Push to Webflow (stub)
+  // POST /api/figma/analyses/:id/push — Push to Webflow via MCP
   app.post('/analyses/:id/push', async (request, reply) => {
     const params = analysisIdSchema.safeParse(request.params);
     if (!params.success) throw new ValidationError(params.error.flatten().fieldErrors);
 
-    return reply.status(501).send({
-      error: {
-        code: 'NOT_IMPLEMENTED',
-        message: 'Push to Webflow requires MCP connection. Coming soon.',
-      },
+    const pushSchema = z.object({
+      siteId: z.string().min(1),
+      pageId: z.string().min(1),
+      parentNodeId: z.string().optional(),
     });
+    const body = pushSchema.safeParse(request.body);
+    if (!body.success) throw new ValidationError(body.error.flatten().fieldErrors);
+
+    const { pushFigmaAnalysis } = await import('../../services/mcp-service.js');
+    const result = await pushFigmaAnalysis({
+      userId: request.user.userId,
+      analysisId: params.data.id,
+      siteId: body.data.siteId,
+      pageId: body.data.pageId,
+      parentNodeId: body.data.parentNodeId,
+    });
+    return reply.send({ data: result });
   });
 }
