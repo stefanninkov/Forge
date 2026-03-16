@@ -29,6 +29,7 @@ export interface TemplateSummary {
   category: string;
   type: TemplateType;
   isPreset: boolean;
+  isPublished?: boolean;
   tags: string[];
   animationAttrs: Record<string, string> | null;
   createdAt: string;

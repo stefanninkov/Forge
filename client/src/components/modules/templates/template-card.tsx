@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Copy, Trash2, ChevronRight, Zap } from 'lucide-react';
+import { Copy, Trash2, ChevronRight, Zap, Globe } from 'lucide-react';
 import type { TemplateSummary } from '@/types/template';
 
 interface TemplateCardProps {
@@ -7,6 +7,7 @@ interface TemplateCardProps {
   onSelect: (template: TemplateSummary) => void;
   onDuplicate?: (template: TemplateSummary) => void;
   onDelete?: (template: TemplateSummary) => void;
+  onPublish?: (template: TemplateSummary) => void;
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -24,7 +25,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   blog: 'Blog',
 };
 
-export function TemplateCard({ template, onSelect, onDuplicate, onDelete }: TemplateCardProps) {
+export function TemplateCard({ template, onSelect, onDuplicate, onDelete, onPublish }: TemplateCardProps) {
   const [hovered, setHovered] = useState(false);
 
   const hasAnimations = template.animationAttrs && Object.keys(template.animationAttrs).length > 0;
@@ -81,6 +82,26 @@ export function TemplateCard({ template, onSelect, onDuplicate, onDelete }: Temp
               gap: 4,
             }}
           >
+            {onPublish && !template.isPreset && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onPublish(template);
+                }}
+                className="flex items-center justify-center border-none cursor-pointer"
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: 'var(--radius-sm)',
+                  backgroundColor: 'var(--bg-primary)',
+                  border: '1px solid var(--border-default)',
+                  color: 'var(--accent)',
+                }}
+                title="Publish to Community"
+              >
+                <Globe size={13} />
+              </button>
+            )}
             {onDuplicate && (
               <button
                 onClick={(e) => {
@@ -191,6 +212,15 @@ export function TemplateCard({ template, onSelect, onDuplicate, onDelete }: Temp
             >
               Preset
             </span>
+          )}
+
+          {/* Published badge */}
+          {template.isPublished && (
+            <Globe
+              size={11}
+              style={{ color: 'var(--accent)', flexShrink: 0 }}
+              title="Published to community"
+            />
           )}
 
           {/* Animation indicator */}

@@ -81,7 +81,7 @@ export async function createTemplate(
     sourceProjectId?: string;
   },
 ) {
-  return prisma.template.create({
+  const template = await prisma.template.create({
     data: {
       userId,
       name: data.name,
@@ -97,6 +97,12 @@ export async function createTemplate(
       isPublished: false,
     },
   });
+
+  prisma.activityLog.create({
+    data: { userId, action: 'TEMPLATE_CREATED', details: { name: template.name, category: data.category } },
+  }).catch(() => {});
+
+  return template;
 }
 
 /** Update a user's custom template */
