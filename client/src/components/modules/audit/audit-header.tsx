@@ -1,6 +1,7 @@
-import { useState } from 'react';
-import { Play, Loader2 } from 'lucide-react';
+import { useState, useCallback } from 'react';
+import { Play, Loader2, Download } from 'lucide-react';
 import { useProjects } from '@/hooks/use-projects';
+import type { AuditFinding } from '@/types/audit';
 
 interface AuditHeaderProps {
   projectId: string | null;
@@ -9,6 +10,8 @@ interface AuditHeaderProps {
   isRunning: boolean;
   lastAuditedAt?: string;
   defaultUrl?: string;
+  findings?: AuditFinding[];
+  auditType?: string;
 }
 
 export function AuditHeader({
@@ -18,9 +21,30 @@ export function AuditHeader({
   isRunning,
   lastAuditedAt,
   defaultUrl,
+  findings,
+  auditType,
 }: AuditHeaderProps) {
   const [url, setUrl] = useState(defaultUrl ?? '');
   const { data: projects } = useProjects();
+
+  const handleExportCSV = useCallback(() => {
+    if (!findings || findings.length === 0) return;
+    const headers = ['Severity', 'Category', 'Title', 'Description', 'Recommendation'];
+    const rows = findings.map((f) => [
+      f.severity,
+      f.category,
+      `"${f.title.replace(/"/g, '""')}"`,
+      `"${(f.description ?? '').replace(/"/g, '""')}"`,
+      `"${(f.recommendation ?? '').replace(/"/g, '""')}"`,
+    ]);
+    const csv = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${auditType ?? 'audit'}-findings-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }, [findings, auditType]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -120,6 +144,32 @@ export function AuditHeader({
           </>
         )}
       </button>
+
+      {/* Export findings */}
+      {findings && findings.length > 0 && (
+        <button
+          type="button"
+          onClick={handleExportCSV}
+          className="flex items-center cursor-pointer"
+          style={{
+            gap: 4,
+            height: 36,
+            padding: '0 10px',
+            border: '1px solid var(--border-default)',
+            borderRadius: 'var(--radius-md)',
+            backgroundColor: 'transparent',
+            color: 'var(--text-secondary)',
+            fontSize: 'var(--text-xs)',
+            fontWeight: 500,
+            fontFamily: 'var(--font-sans)',
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--surface-hover)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+        >
+          <Download size={12} />
+          Export CSV
+        </button>
+      )}
 
       {/* Last audited */}
       {lastAuditedAt && (

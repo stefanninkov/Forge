@@ -1,5 +1,7 @@
 import { useState, useMemo, useCallback } from 'react';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { ChevronDown, ChevronUp, ArrowRight, GitCompare } from 'lucide-react';
+import { AuditComparison } from '@/components/modules/audit/audit-comparison';
 import { PageHeader } from '@/components/layout/page-header';
 import { usePageTitle } from '@/hooks/use-page-title';
 import { AuditHeader } from '@/components/modules/audit/audit-header';
@@ -7,16 +9,22 @@ import { ScoreCard } from '@/components/modules/audit/score-card';
 import { CategoryTabs } from '@/components/modules/audit/category-tabs';
 import { FindingRow } from '@/components/modules/audit/finding-row';
 import { ScoreHistoryChart } from '@/components/modules/audit/score-history-chart';
+import { ImageChecklist } from '@/components/modules/audit/image-checklist';
+import { AiRecommendationsPanel } from '@/components/modules/audit/ai-recommendations';
+import { AuditSchedulePanel } from '@/components/modules/audit/audit-schedule-panel';
+import { CodeReviewPanel } from '@/components/modules/audit/code-review-panel';
 import { useAudits, useRunSpeedAudit, useAuditHistory } from '@/hooks/use-audits';
 import type { SpeedResults, AuditFinding } from '@/types/audit';
 import { SPEED_CATEGORIES, SPEED_CATEGORY_LABELS } from '@/types/audit';
 
 export default function SpeedPage() {
   usePageTitle('Page Speed');
+  const navigate = useNavigate();
   const [projectId, setProjectId] = useState<string | null>(null);
   const [strategy, setStrategy] = useState<'mobile' | 'desktop'>('mobile');
   const [activeCategory, setActiveCategory] = useState('all');
   const [showHistory, setShowHistory] = useState(false);
+  const [showComparison, setShowComparison] = useState(false);
 
   const { data: audits } = useAudits(projectId, 'SPEED');
   const { data: history } = useAuditHistory(projectId, 'SPEED');
@@ -50,6 +58,13 @@ export default function SpeedPage() {
     return counts;
   }, [activeResults]);
 
+  const hasScriptFindings = useMemo(() => {
+    if (!activeResults) return false;
+    return activeResults.findings.some(
+      (f) => f.category === 'scripts' && f.severity !== 'success',
+    );
+  }, [activeResults]);
+
   const handleRunAudit = useCallback(
     (url: string) => {
       if (projectId) {
@@ -72,6 +87,8 @@ export default function SpeedPage() {
           onRunAudit={handleRunAudit}
           isRunning={runAudit.isPending}
           lastAuditedAt={latestAudit?.createdAt}
+          findings={activeResults?.findings}
+          auditType="speed"
         />
 
         {runAudit.isError && (
@@ -218,6 +235,116 @@ export default function SpeedPage() {
                   ))
                 )}
               </div>
+            </div>
+
+            {/* Image optimization checklist */}
+            <ImageChecklist findings={activeResults.findings} />
+
+            {/* Animation engine link */}
+            {hasScriptFindings && (
+              <button
+                onClick={() => navigate('/animations')}
+                className="flex items-center border-none cursor-pointer"
+                style={{
+                  padding: '10px 14px',
+                  gap: 8,
+                  borderRadius: 'var(--radius-md)',
+                  backgroundColor: 'var(--accent-subtle)',
+                  fontFamily: 'var(--font-sans)',
+                  transition: 'background-color var(--duration-fast)',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--accent-muted)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--accent-subtle)';
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: 'var(--text-sm)',
+                    color: 'var(--accent-text)',
+                    fontWeight: 500,
+                  }}
+                >
+                  Some findings relate to JavaScript and animations. Review your animation setup to optimize script loading.
+                </span>
+                <span
+                  className="flex items-center shrink-0"
+                  style={{
+                    fontSize: 'var(--text-sm)',
+                    color: 'var(--accent-text)',
+                    fontWeight: 600,
+                    gap: 4,
+                  }}
+                >
+                  View in Animation Engine
+                  <ArrowRight size={14} />
+                </span>
+              </button>
+            )}
+
+            {/* Comparison with previous */}
+            {previousAudit && latestAudit && (
+              <div
+                style={{
+                  border: '1px solid var(--border-default)',
+                  borderRadius: 'var(--radius-lg)',
+                  overflow: 'hidden',
+                  marginBottom: 12,
+                }}
+              >
+                <button
+                  onClick={() => setShowComparison(!showComparison)}
+                  className="flex items-center justify-between w-full border-none bg-transparent cursor-pointer"
+                  style={{
+                    padding: '10px 12px',
+                    fontFamily: 'var(--font-sans)',
+                  }}
+                >
+                  <span
+                    className="flex items-center"
+                    style={{
+                      gap: 6,
+                      fontSize: 'var(--text-xs)',
+                      fontWeight: 600,
+                      color: 'var(--text-primary)',
+                    }}
+                  >
+                    <GitCompare size={14} style={{ color: 'var(--accent-text)' }} />
+                    Compare with Previous Run
+                  </span>
+                  <span style={{ color: 'var(--text-tertiary)' }}>
+                    {showComparison ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                  </span>
+                </button>
+                {showComparison && (
+                  <div style={{ padding: '0 12px 12px' }}>
+                    <AuditComparison previous={previousAudit} current={latestAudit} />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* AI Recommendations */}
+            {latestAudit && (
+              <div style={{ marginTop: 24 }}>
+                <AiRecommendationsPanel auditId={latestAudit.id} />
+              </div>
+            )}
+
+            {/* Scheduled Audits */}
+            <div style={{ marginTop: 24 }}>
+              <AuditSchedulePanel
+                projectId={projectId}
+                auditType="SPEED"
+                defaultUrl={latestAudit?.urlAudited}
+              />
+            </div>
+
+            {/* Code Review */}
+            <div style={{ marginTop: 24 }}>
+              <CodeReviewPanel />
             </div>
 
             {/* Score history */}

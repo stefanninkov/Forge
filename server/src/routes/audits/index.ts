@@ -1,10 +1,13 @@
 import { FastifyInstance } from 'fastify';
+import { z } from 'zod';
 import { requireAuth } from '../../middleware/auth.js';
 import { ValidationError } from '../../utils/errors.js';
 import * as auditService from '../../services/audit-service.js';
 import { runSpeedAudit } from '../../services/speed-service.js';
 import { runSeoAudit } from '../../services/seo-service.js';
 import { runAeoAudit } from '../../services/aeo-service.js';
+import { getAiSeoRecommendations, getAeoRecommendations } from '../../services/ai-service.js';
+import * as integrationService from '../../services/integration-service.js';
 import {
   runAuditSchema,
   auditFiltersSchema,
@@ -12,7 +15,11 @@ import {
   projectIdSchema,
   auditIdSchema,
   alertIdSchema,
+  createScheduleSchema,
+  updateScheduleSchema,
+  scheduleIdSchema,
 } from './schemas.js';
+import * as scheduleService from '../../services/audit-schedule-service.js';
 import { logActivity } from '../../utils/activity-logger.js';
 
 export async function auditRoutes(app: FastifyInstance) {
@@ -115,5 +122,91 @@ export async function auditRoutes(app: FastifyInstance) {
 
     const alert = await auditService.markAlertRead(params.data.id);
     return reply.send({ data: alert });
+  });
+
+  // POST /api/audits/:id/ai-recommendations — Get AI-powered recommendations for an audit
+  const aiRecommendationsSchema = z.object({ id: z.string().uuid() });
+  app.post('/audits/:id/ai-recommendations', async (request, reply) => {
+    const params = aiRecommendationsSchema.safeParse(request.params);
+    if (!params.success) throw new ValidationError(params.error.flatten().fieldErrors);
+
+    const anthropicKey = await integrationService.getAccessToken(request.user.userId, 'anthropic');
+    if (!anthropicKey) {
+      return reply.status(400).send({
+        error: {
+          code: 'MISSING_API_KEY',
+          message: 'Anthropic API key not configured. Go to Settings → Integrations to add it.',
+        },
+      });
+    }
+
+    const audit = await auditService.getAudit(params.data.id);
+
+    const results = audit.results as Record<string, unknown> ?? {};
+    const findings = (results.findings as Array<{ title: string; description: string; severity: string; category: string }>) ?? [];
+    const url = audit.urlAudited ?? '';
+
+    let recommendations;
+    if (audit.type === 'AEO') {
+      recommendations = await getAeoRecommendations(
+        anthropicKey,
+        findings.map((f) => f.description).join('\n'),
+        findings.map((f) => f.title),
+      );
+    } else {
+      recommendations = await getAiSeoRecommendations(anthropicKey, findings, url);
+    }
+
+    return reply.send({ data: recommendations });
+  });
+
+  // ── Audit Schedules ──────────────────────────────────────────────
+
+  // GET /api/projects/:id/schedules — List schedules for project
+  app.get('/projects/:id/schedules', async (request, reply) => {
+    const params = projectIdSchema.safeParse(request.params);
+    if (!params.success) throw new ValidationError(params.error.flatten().fieldErrors);
+
+    const schedules = await scheduleService.listSchedules(params.data.id);
+    return reply.send({ data: schedules });
+  });
+
+  // POST /api/projects/:id/schedules — Create/upsert schedule
+  app.post('/projects/:id/schedules', async (request, reply) => {
+    const params = projectIdSchema.safeParse(request.params);
+    if (!params.success) throw new ValidationError(params.error.flatten().fieldErrors);
+
+    const body = createScheduleSchema.safeParse(request.body);
+    if (!body.success) throw new ValidationError(body.error.flatten().fieldErrors);
+
+    const schedule = await scheduleService.createSchedule({
+      userId: request.user.userId,
+      projectId: params.data.id,
+      type: body.data.type as 'SPEED' | 'SEO' | 'AEO',
+      url: body.data.url,
+      frequency: body.data.frequency as 'DAILY' | 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY',
+    });
+    return reply.status(201).send({ data: schedule });
+  });
+
+  // PUT /api/schedules/:scheduleId — Update schedule
+  app.put('/schedules/:scheduleId', async (request, reply) => {
+    const params = scheduleIdSchema.safeParse(request.params);
+    if (!params.success) throw new ValidationError(params.error.flatten().fieldErrors);
+
+    const body = updateScheduleSchema.safeParse(request.body);
+    if (!body.success) throw new ValidationError(body.error.flatten().fieldErrors);
+
+    const schedule = await scheduleService.updateSchedule(params.data.scheduleId, request.user.userId, body.data);
+    return reply.send({ data: schedule });
+  });
+
+  // DELETE /api/schedules/:scheduleId — Delete schedule
+  app.delete('/schedules/:scheduleId', async (request, reply) => {
+    const params = scheduleIdSchema.safeParse(request.params);
+    if (!params.success) throw new ValidationError(params.error.flatten().fieldErrors);
+
+    await scheduleService.deleteSchedule(params.data.scheduleId, request.user.userId);
+    return reply.status(204).send();
   });
 }

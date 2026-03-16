@@ -137,3 +137,30 @@ export function useMarkAlertRead() {
     },
   });
 }
+
+/** AI-powered recommendations for an audit */
+interface AiRecommendation {
+  category: string;
+  priority: 'high' | 'medium' | 'low';
+  title: string;
+  description: string;
+  currentValue?: string;
+  suggestedValue?: string;
+  affectedUrls?: string[];
+}
+
+interface AiRecommendationsResponse {
+  data: AiRecommendation[];
+}
+
+export function useAiRecommendations() {
+  return useMutation({
+    mutationFn: (auditId: string) =>
+      api.post<AiRecommendationsResponse>(`/audits/${auditId}/ai-recommendations`, {}).then((r) => r.data),
+    onError: (err: Error) => {
+      toast.error(err.message || 'Failed to generate AI recommendations');
+    },
+  });
+}
+
+export type { AiRecommendation };

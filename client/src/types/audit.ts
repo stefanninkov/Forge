@@ -11,6 +11,7 @@ export interface AuditFinding {
   recommendation: string;
   savingsMs?: number;
   savingsBytes?: number;
+  affectedUrls?: string[];
 }
 
 export interface CoreWebVitalMetric {
