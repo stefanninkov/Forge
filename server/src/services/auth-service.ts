@@ -279,3 +279,80 @@ export async function cleanupExpiredTokens(): Promise<number> {
   });
   return result.count;
 }
+
+// ─── Password Reset ──────────────────────────────────────────────
+
+const RESET_TOKEN_EXPIRY_HOURS = 1;
+
+export async function requestPasswordReset(email: string): Promise<{ token: string } | null> {
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user) {
+    // Don't reveal if user exists — return null silently
+    return null;
+  }
+
+  // Invalidate any existing tokens for this user
+  await prisma.passwordResetToken.updateMany({
+    where: { userId: user.id, used: false },
+    data: { used: true },
+  });
+
+  const token = crypto.randomUUID();
+  const expiresAt = new Date();
+  expiresAt.setHours(expiresAt.getHours() + RESET_TOKEN_EXPIRY_HOURS);
+
+  await prisma.passwordResetToken.create({
+    data: {
+      userId: user.id,
+      token,
+      expiresAt,
+    },
+  });
+
+  // In development, log the token (no email sending)
+  if (env.NODE_ENV === 'development') {
+    // eslint-disable-next-line no-console
+    console.log(`[DEV] Password reset token for ${email}: ${token}`);
+  }
+
+  return { token };
+}
+
+export async function resetPassword(token: string, newPassword: string): Promise<void> {
+  const resetToken = await prisma.passwordResetToken.findUnique({
+    where: { token },
+  });
+
+  if (!resetToken) {
+    throw new UnauthorizedError('Invalid or expired reset token');
+  }
+
+  if (resetToken.used) {
+    throw new UnauthorizedError('This reset token has already been used');
+  }
+
+  if (resetToken.expiresAt < new Date()) {
+    await prisma.passwordResetToken.update({
+      where: { id: resetToken.id },
+      data: { used: true },
+    });
+    throw new UnauthorizedError('This reset token has expired');
+  }
+
+  const newHash = await hashPassword(newPassword);
+
+  await prisma.$transaction([
+    prisma.user.update({
+      where: { id: resetToken.userId },
+      data: { passwordHash: newHash },
+    }),
+    prisma.passwordResetToken.update({
+      where: { id: resetToken.id },
+      data: { used: true },
+    }),
+    // Revoke all refresh tokens for security
+    prisma.refreshToken.deleteMany({
+      where: { userId: resetToken.userId },
+    }),
+  ]);
+}

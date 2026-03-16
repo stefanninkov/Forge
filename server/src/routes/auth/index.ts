@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify';
-import { registerSchema, loginSchema, refreshSchema, logoutSchema, updateAccountSchema, changePasswordSchema } from './schemas.js';
+import { registerSchema, loginSchema, refreshSchema, logoutSchema, updateAccountSchema, changePasswordSchema, forgotPasswordSchema, resetPasswordSchema } from './schemas.js';
 import * as authService from '../../services/auth-service.js';
 import { requireAuth } from '../../middleware/auth.js';
 import { ValidationError } from '../../utils/errors.js';
@@ -94,6 +94,32 @@ export async function authRoutes(app: FastifyInstance) {
       parsed.data.currentPassword,
       parsed.data.newPassword,
     );
+    return reply.send({ success: true });
+  });
+
+  // POST /api/auth/forgot-password
+  app.post('/forgot-password', async (request, reply) => {
+    const parsed = forgotPasswordSchema.safeParse(request.body);
+    if (!parsed.success) {
+      throw new ValidationError(parsed.error.flatten().fieldErrors);
+    }
+
+    // Always return success (don't reveal if email exists)
+    await authService.requestPasswordReset(parsed.data.email);
+    return reply.send({
+      success: true,
+      message: 'If an account with that email exists, a password reset link has been sent.',
+    });
+  });
+
+  // POST /api/auth/reset-password
+  app.post('/reset-password', async (request, reply) => {
+    const parsed = resetPasswordSchema.safeParse(request.body);
+    if (!parsed.success) {
+      throw new ValidationError(parsed.error.flatten().fieldErrors);
+    }
+
+    await authService.resetPassword(parsed.data.token, parsed.data.newPassword);
     return reply.send({ success: true });
   });
 

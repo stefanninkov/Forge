@@ -199,6 +199,21 @@ export default function LoginPage() {
               />
             </div>
 
+            <div className="flex justify-end" style={{ marginBottom: 16, marginTop: -8 }}>
+              <Link
+                to="/forgot-password"
+                style={{
+                  fontSize: 'var(--text-xs)',
+                  color: 'var(--text-tertiary)',
+                  textDecoration: 'none',
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--accent-text)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-tertiary)'; }}
+              >
+                Forgot password?
+              </Link>
+            </div>
+
             {error && (
               <p
                 style={{

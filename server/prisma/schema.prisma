@@ -315,6 +315,7 @@ enum ActivityAction {
   SECTION_CAPTURED
   FIGMA_ANALYZED
   SETTINGS_UPDATED
+  PROJECT_DUPLICATED
 
   @@map("activity_action")
 }
@@ -439,6 +440,144 @@ model NotificationPreference {
 
   @@unique([userId, channel, event])
   @@map("notification_preferences")
+}
+
+// ─── Audit Schedules ────────────────────────────────────────────
+
+model AuditSchedule {
+  id        String          @id @default(uuid()) @db.Uuid
+  userId    String          @map("user_id") @db.Uuid
+  projectId String          @map("project_id") @db.Uuid
+  type      AuditType
+  url       String
+  frequency ScheduleFrequency
+  enabled   Boolean         @default(true)
+  lastRunAt DateTime?       @map("last_run_at")
+  nextRunAt DateTime?       @map("next_run_at")
+  createdAt DateTime        @default(now()) @map("created_at")
+  updatedAt DateTime        @updatedAt @map("updated_at")
+
+  @@unique([projectId, type])
+  @@index([userId])
+  @@index([nextRunAt])
+  @@map("audit_schedules")
+}
+
+enum ScheduleFrequency {
+  DAILY
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
+
+  @@map("schedule_frequency")
+}
+
+// ─── Community Library ──────────────────────────────────────────
+
+model CommunityTemplate {
+  id            String   @id @default(uuid()) @db.Uuid
+  templateId    String   @map("template_id") @db.Uuid
+  authorId      String   @map("author_id") @db.Uuid
+  authorName    String   @map("author_name")
+  name          String
+  description   String?
+  category      String
+  type          TemplateType @default(SKELETON)
+  structure     Json
+  styles        Json?
+  animationAttrs Json?   @map("animation_attrs")
+  tags          String[] @default([])
+  downloads     Int      @default(0)
+  likes         Int      @default(0)
+  featured      Boolean  @default(false)
+  publishedAt   DateTime @default(now()) @map("published_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@index([authorId])
+  @@index([category])
+  @@index([featured])
+  @@index([downloads])
+  @@index([publishedAt])
+  @@map("community_templates")
+}
+
+model CommunityLike {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  templateId  String   @map("template_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@unique([userId, templateId])
+  @@map("community_likes")
+}
+
+// ─── Teams ──────────────────────────────────────────────────────
+
+model Team {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  slug      String   @unique
+  ownerId   String   @map("owner_id") @db.Uuid
+  avatarUrl String?  @map("avatar_url")
+  plan      Plan     @default(FREE)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  members      TeamMember[]
+  invitations  TeamInvitation[]
+
+  @@index([ownerId])
+  @@map("teams")
+}
+
+model TeamMember {
+  id        String   @id @default(uuid()) @db.Uuid
+  teamId    String   @map("team_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  role      TeamRole @default(MEMBER)
+  joinedAt  DateTime @default(now()) @map("joined_at")
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, userId])
+  @@index([userId])
+  @@map("team_members")
+}
+
+model TeamInvitation {
+  id        String           @id @default(uuid()) @db.Uuid
+  teamId    String           @map("team_id") @db.Uuid
+  email     String
+  role      TeamRole         @default(MEMBER)
+  token     String           @unique
+  status    InvitationStatus @default(PENDING)
+  invitedBy String           @map("invited_by") @db.Uuid
+  expiresAt DateTime         @map("expires_at")
+  createdAt DateTime         @default(now()) @map("created_at")
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@index([email])
+  @@index([token])
+  @@map("team_invitations")
+}
+
+enum TeamRole {
+  OWNER
+  ADMIN
+  MEMBER
+  VIEWER
+
+  @@map("team_role")
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
+
+  @@map("invitation_status")
 }
 
 // ─── Handoff Reports ─────────────────────────────────────────────
