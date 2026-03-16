@@ -419,18 +419,393 @@ Phase order from PLAN.md:
 - Project selector in Figma page header
 - Push to Webflow dialogs on both Figma and Templates pages
 
-### Next Up
-- Cross-module connections (event bus pattern)
-- AI enhancements (Claude API integrations for Figma, templates, audits)
-- Animation Engine upgrades (page transitions, performance profiler)
-- Figma Pipeline upgrade (enhanced import, component mapping)
-- Template Visual Preview (live HTML preview in iframe)
-- Section Capture frontend wiring to backend
-- Client Handoff Report PDF generation
-- Site Health monitoring with trend charts
-- Clipboard History Panel
-- Bulk Attribute Application
-- Template Diff View
-- Project Duplication
-- Project Notes (rich text)
-- Recently Visited tracking
+#### Expansion Session 2 (2026-03-14)
+
+**Password Reset Flow**
+- `POST /api/auth/forgot-password` — token-based reset, logs token in dev
+- `POST /api/auth/reset-password` — validates token, updates password, revokes sessions
+- PasswordResetToken model in Prisma schema
+- `/forgot-password` and `/reset-password` frontend pages
+- "Forgot password?" link on login page
+
+**Master Script Versioning**
+- Stores last 10 script versions in project's `scriptConfig` JSON field
+- `GET /api/projects/:id/animations/script-history` — version list
+- `GET /api/projects/:id/animations/script-version/:version` — specific version
+- Version history viewer in ScriptGeneratorPanel with expandable list
+
+**Data Export Enhancement**
+- `GET /api/export` — full user data export (projects, templates, sections, scaling, notifications, integrations)
+- Fixed auth pattern (was using `(request as any).userId`)
+
+**Notification Preferences**
+- `GET /api/notifications/preferences` + `PUT /api/notifications/preferences`
+- Client hooks: `useNotificationPreferences`, `useUpdateNotificationPreferences`
+- Settings → Notifications tab wired to real API with per-event toggles
+
+**Project Score Badges**
+- `GET /api/projects/:id/scores` — latest audit scores per type
+- `useProjectScores` hook
+- ProjectCard shows Speed/SEO/AEO score badges with color coding
+
+**Figma Full Styling Extraction**
+- Expanded figma-service.ts to extract: colors, gradients, images, borders, border-radius, shadows, blur, full typography, opacity, overflow
+- Helper functions: figmaColorToRgba, figmaColorToHex, mapAlignItems
+- Split-screen Figma preview with responsive breakpoints (960/768/375px)
+- Enhanced Push to Webflow dialog: class review panel, copy HTML/Designer Script
+- Style panel integration in Figma page (collapsible, appears on node selection)
+
+**Speed Page Enhancement**
+- Image Optimization Checklist component with checkbox tracking, progress bar, text export
+- `affectedUrls` field added to AuditFinding type
+
+**Template System Enhancement**
+- Advanced filtering: search, sort (name/date), category filter tabs
+- Template live preview with responsive viewport toggles
+- Style editing integration in template detail panel
+
+**Health Dashboard**
+- Real API integration (useHealthOverview, useProjectTrends)
+- Sparkline SVG charts in metric cards
+- Project-specific trends with selector dropdown
+- Trend calculation (up/down/neutral)
+
+**Site-wide Features**
+- Command Palette (Cmd+K) — search pages, recent projects, theme toggle
+- Global keyboard shortcuts: Cmd+` (theme), Cmd+, (settings)
+- Welcome dialog with 3-step onboarding
+- Dashboard quick actions (Speed Audit, Figma Import, Templates, Health)
+- Guide content pages (8 articles covering key topics)
+- Cross-module navigation links (Speed→Animations, SEO→Setup)
+- Shared StructureTree component with semantic HTML badges
+- UnitInput with unit conversion
+- HelpTooltip with centralized constants
+- Undo/redo system (Zustand-based history)
+
+#### Expansion Session 3 (2026-03-14)
+
+**Skeleton Loading System**
+- Created `client/src/components/shared/skeleton.tsx` with composable skeletons:
+  - `Skeleton` (base), `SkeletonText`, `SkeletonCard`, `SkeletonProjectGrid`
+  - `SkeletonTable`, `SkeletonAuditPage`, `SkeletonSetupPage`, `SkeletonActivityPage`
+  - `SkeletonFigmaPage`, `SkeletonTemplateGrid`, `SkeletonAnimationGrid`
+- Added `skeletonPulse` keyframe animation to globals.css
+- Replaced all loading spinners with skeleton loaders across pages:
+  - Dashboard → `SkeletonProjectGrid`
+  - Templates → `SkeletonTemplateGrid`
+  - Animations → `SkeletonAnimationGrid`
+  - Setup → `SkeletonSetupPage`
+  - Activity → `SkeletonActivityPage`
+  - Reports → custom skeleton cards
+  - Health → score card + chart skeletons
+  - Project Notes Panel → text line skeletons
+  - App.tsx Suspense fallback → skeleton page layout
+
+**Audit Comparison Feature**
+- Created `client/src/components/modules/audit/audit-comparison.tsx`:
+  - Side-by-side score display (previous → current) with diff badge
+  - Three-column issue breakdown: Resolved / New Issues / Persistent
+  - Color-coded with severity counts
+- Wired "Compare with Previous Run" collapsible section into Speed, SEO, and AEO pages
+- Uses `GitCompare` icon, consistent with rest of UI
+
+**Audit CSV Export**
+- Added `Export CSV` button to `AuditHeader` component
+- Exports findings as CSV with columns: Severity, Category, Title, Description, Recommendation
+- Auto-names file with audit type and date
+- Wired into Speed, SEO, and AEO pages via `findings` and `auditType` props
+
+**Settings Scaling Tab Upgrade**
+- Replaced static breakpoint display with real `ScalingConfigEditor` component
+- Wired to `useScalingSystem` hook for live API updates
+- Edit mode toggles between summary view and full editor
+- Default unit selector (px/rem/em) now functional
+
+**Public Shared Report Page**
+- Created `client/src/pages/shared-report.tsx`:
+  - Public route at `/report/:token` (no auth required)
+  - Clean, print-friendly layout with Forge branding
+  - Renders report sections with type-specific icons
+  - Print button with print-friendly CSS
+  - Error state for expired/invalid links
+- Added to App.tsx routes
+
+**Activity Page Enhancement**
+- Added `PROJECT_DUPLICATED` action type to client + Prisma schema
+- Activity items now display detail metadata (key:value pairs from details JSON)
+
+**Backend**
+- Scaling system routes fully implemented (GET/PUT/POST generate)
+- Section capture URL endpoint (POST /api/sections/capture/url)
+- Health dashboard endpoints (overview + project trends)
+- Semantic HTML analysis service + endpoint
+- Reports backend fix (shareToken response includes project)
+- Prisma schema pushed with PROJECT_DUPLICATED enum
+
+**Background Agents Completed**
+- Undo/redo wiring into StylePanel + Figma editors
+- Section capture URL dialog frontend
+- Handoff report builder + viewer components
+- Project duplication (backend service + frontend UI)
+- Bulk animation application dialog
+- Template folders system (backend + frontend)
+
+#### Expansion Session 4 (2026-03-14)
+
+**Undo/Redo Wiring**
+- Created `FigmaEditorSnapshot` type for undo/redo state
+- Module-level `editorUndoRedoStore` with 50-step history
+- All style/animation changes push undo snapshots with descriptive labels
+- `handleUndo`/`handleRedo` callbacks restore state from store
+- Wired into `StylePanel` via `onUndo`/`onRedo`/`canUndo`/`canRedo` props
+- Keyboard shortcuts (⌘Z / ⌘⇧Z) work via `useUndoRedoKeyboard`
+
+**Handoff Report Integration**
+- Added `onHandoffReport` prop to `ProjectCard` component
+- Added "Handoff Report" menu item to project card dropdown (with FileText icon)
+- Wired `HandoffReportDialog` into dashboard page with state management
+
+**URL Capture Dialog**
+- Created `client/src/components/modules/templates/url-capture-dialog.tsx`
+- Modal dialog with URL input, server-side fetching, HTML preview
+- Copy HTML button, error handling, character count display
+- Added "Capture URL" button to templates page header
+- Wired `UrlCaptureDialog` into templates page
+
+**AI Services (Claude API Integration)**
+- Created `server/src/integrations/claude-client.ts`:
+  - Centralized Claude API client with `complete()` and `completeJson<T>()` methods
+  - JSON extraction from markdown code blocks
+  - Token usage tracking
+- Created `server/src/services/ai-service.ts`:
+  - `getAnimationRecommendations()` — AI-powered animation suggestions for site structure
+  - `getAiSeoRecommendations()` — Prioritized SEO fixes from audit findings
+  - `getClassNameSuggestions()` — Client-First class name generation
+  - `getAeoRecommendations()` — AI Engine Optimization suggestions
+- Added `POST /api/audits/:id/ai-recommendations` endpoint
+- Added `POST /api/animations/ai-recommend` endpoint
+- Created `useAiRecommendations()` hook in `client/src/hooks/use-audits.ts`
+- Created `AiRecommendationsPanel` component:
+  - Generate button with loading state
+  - Priority-coded recommendation list (high/medium/low)
+  - Expandable items with description, suggested values, affected URLs
+  - Purple accent for AI branding distinction
+
+**TypeScript + Build Verification**
+- Both client and server compile clean (0 errors)
+- Vite production build: 1921 modules, 1.56s, ~381KB main bundle gzipped to 117KB
+
+#### Expansion Session 5 (2026-03-14)
+
+**Audit Scheduling System**
+- Added `AuditSchedule` model to Prisma schema with `ScheduleFrequency` enum (DAILY/WEEKLY/BIWEEKLY/MONTHLY)
+- Created `audit-schedule-service.ts`: CRUD + computeNextRun + getDueSchedules
+- Added schedule routes to `audits/index.ts`: GET list, POST create, PUT update, DELETE
+- Created `use-audit-schedules.ts` hook with TanStack Query mutations
+- Created `AuditSchedulePanel` component with create form, active schedule view, toggle/delete
+- Wired schedule panels into Speed, SEO, and AEO pages
+
+**AI Routes & Code Review**
+- Created `/api/ai` route module with class name + code review endpoints
+- Registered AI routes in server index
+- Created `code-review-service.ts`: AI-powered embed code analysis (performance, security, compatibility, accessibility)
+- Created `CodeReviewPanel` component: code input with language selector, AI review with score + issues
+- Wired code review into Speed page
+- Created `use-class-names.ts` hook (mutation for AI class name suggestions)
+
+**Figma Pipeline Enhancement**
+- Created `ClassNameReview` component: AI-generated class name suggestions with accept/reject/accept-all
+- Wired into Figma page semantic HTML tab
+- Created `PrePushReview` component (via agent): structure/class/semantic/style/animation/image review checklist
+- Added Review step to Push to Webflow dialog with PrePushReview integration
+- Deep clone project duplication: now copies setup progress, scaling configs, captured sections
+
+**Animation Module Enhancement**
+- Created `PageTransitions` component: 10 page transition presets (fade/slide/scale/clip) with code viewer + copy
+- Created `PerformanceHints` component: animation performance analysis (layout/paint/composite detection, stagger warnings, engine recommendations)
+- Created `QuickApplyPanel`: floating panel with 12 quick animation presets + one-click copy
+- Added FAB button to animations page for quick apply access
+
+**Bulk Operations**
+- Created `BulkOperationsDialog`: multi-element selector with animation/style/remove tabs
+- Element search filter, select all/none, preset/engine/trigger selectors
+
+**UI Enhancements**
+- Created `NotificationBell` component: dropdown with unread alerts, severity icons, mark-as-read
+- Integrated into PageHeader (appears on every page)
+- Created `KeyboardShortcutsPanel`: grouped shortcuts reference with kbd styling
+- Replaced settings shortcuts tab with comprehensive panel (5 groups, 16 shortcuts)
+
+**Dashboard Enhancement**
+- Added project sort dropdown: Recently Viewed / Date Created / Name
+- Created `useRecentProjects` hook: localStorage-based visit tracking with useSyncExternalStore
+- Wired into `useActiveProject` store for automatic tracking
+- Project count display
+
+**Centralized Tooltips Extended**
+- Added tooltip groups: audit scheduling, code review, page transitions, performance, class names
+
+**TypeScript + Build Verification**
+- Client: 0 errors
+- Server: 0 errors
+- Vite build: 1931 modules, 1.69s, ~383KB main bundle gzipped to 118KB
+
+#### Expansion Session 6 (2026-03-16)
+
+**MCP Push Integration — All 501 Stubs Replaced**
+- Created `server/src/integrations/webflow-client.ts`: Full Webflow REST API v2 client
+  - Site operations: listSites, getSite
+  - Page operations: listPages, getPage
+  - DOM operations: getPageDom, updatePageDom, createElements
+  - Attribute operations: setElementAttributes
+  - Custom code: getCustomCode, addCustomCode, upsertPageCustomCode
+  - Publish: publishSite
+  - Structure conversion: forgeNodeToWebflowDom helper
+- Created `server/src/services/mcp-service.ts`: Push orchestration service
+  - checkConnection: verifies Webflow token, returns site info
+  - pushFigmaAnalysis: converts parsed structure → Webflow DOM, creates elements
+  - pushTemplate: wraps template structure in section, pushes to page
+  - pushMasterScript: injects animation runtime via custom code API
+  - pushScalingCss: pushes REM scaling CSS to site header
+  - executeSetupItem: auto-executes supported setup checklist items (noindex, lazy loading)
+- Updated MCP routes (`/api/mcp/`): status, reconnect, sites list, site pages, push script, push scaling
+- Updated Figma routes: `/api/figma/analyses/:id/push` now calls pushFigmaAnalysis
+- Updated Template routes: `/api/templates/:id/push` now calls pushTemplate
+- Updated Setup routes: `/api/projects/:id/setup/execute/:item` now calls executeSetupItem
+- Created `client/src/hooks/use-webflow-push.ts`: TanStack Query hooks for all push operations
+  - useWebflowSites, useWebflowPages
+  - usePushFigmaAnalysis, usePushTemplate, usePushMasterScript, usePushScalingCss, useExecuteSetupItem
+- Created `client/src/components/shared/push-to-webflow-dialog.tsx`: Reusable push dialog with site/page selectors, loading/success states, MCP status check
+
+**Team/Agency Features**
+- Added Prisma models: Team, TeamMember, TeamInvitation
+- Added enums: TeamRole (OWNER/ADMIN/MEMBER/VIEWER), InvitationStatus (PENDING/ACCEPTED/EXPIRED/REVOKED)
+- Schema pushed to database
+- Created `server/src/services/team-service.ts`: Full team management
+  - Team CRUD: createTeam (with auto owner membership), getTeam, listUserTeams, updateTeam, deleteTeam
+  - Member management: listMembers (with user info), updateMemberRole, removeMember, leaveTeam
+  - Invitation flow: inviteMember (7-day token), acceptInvitation (email verification), revokeInvitation, listInvitations
+  - Role-based authorization: requireRole helper checks team membership and permissions
+- Created `server/src/routes/teams/index.ts`: REST endpoints
+  - GET/POST /api/teams, GET/PUT/DELETE /api/teams/:teamId
+  - GET /api/teams/:teamId/members, PUT/DELETE /api/teams/:teamId/members/:memberId
+  - POST /api/teams/:teamId/leave
+  - POST/GET /api/teams/:teamId/invitations, DELETE revoke
+  - POST /api/teams/accept-invitation
+- Created `client/src/hooks/use-teams.ts`: Full TanStack Query hooks (12 hooks)
+- Created `client/src/pages/teams.tsx`: Teams management page
+  - List view: team cards with role icons, member counts, slug
+  - Detail view: member list with avatars, role badges, actions menu
+  - Create team dialog: name input with auto-slug generation
+  - Invite dialog: email + role selector
+  - Member actions: role change, remove
+  - Pending invitations list with revoke
+  - Danger zone: leave team, delete team
+- Registered team routes in server/src/index.ts
+
+**Community Library**
+- Community backend (service + routes) existed from prior session
+- Created `client/src/hooks/use-community.ts`: hooks for templates, presets, install, publish, unpublish
+- Created `client/src/pages/community.tsx`: Community library page
+  - Tab navigation: Templates | Animation Presets
+  - Filter bar: search, sort (popular/recent/name), category pills
+  - Template cards: preview area, name, category badge, tags, download/like counts, install button, author name
+  - Preset cards: engine badge (CSS/GSAP), trigger badge, category, install button
+  - Loading skeletons, empty state
+
+**Navigation Updates**
+- Added "Collaborate" section to sidebar with Teams and Community links
+- Added routes to App.tsx: /teams, /community
+- Added lazy imports for TeamsPage and CommunityPage
+- Added Users and Globe icons to sidebar
+
+**Centralized Tooltips Extended**
+- Added tooltip groups: teams, community, push-to-webflow (3 new groups, 11 new tooltips)
+
+**TypeScript + Build Verification**
+- Client: 0 errors
+- Server: 0 errors
+- Vite build: 1937 modules, 1.58s, ~383KB main bundle gzipped to 118KB
+
+**Undo/Redo Persistence**
+- Added `createPersistedUndoRedoStore<T>()` to `use-undo-redo.ts`
+- Persists undo/redo history to localStorage with `forge-undo-` prefix
+- Auto-loads previous state on store creation
+- All push/undo/redo/clear operations sync to localStorage
+- Configurable max history (default 30 for persisted, 50 for in-memory)
+
+**Browser Extension**
+- Created `extension/` directory with Chrome Manifest V3 extension
+- `manifest.json`: permissions for activeTab, storage; content script on all URLs
+- `src/popup.html`: Dark-themed popup with 4 actions (Capture Section, Inspect Element, Copy Selection HTML, Settings)
+- `src/popup.js`: Connection status check, API token storage, message passing to content script
+- `src/content.js`: Full capture and inspect mode implementation
+  - Hover highlighting with outline
+  - Element info display (tag + classes)
+  - Section capture: extracts outerHTML + computed CSS styles, copies to clipboard
+  - Element inspect: extracts tag, classes, dimensions, text, attributes, styles
+  - Unique CSS selector generation for captured elements
+  - Toast notifications for capture feedback
+  - Stores captures in chrome.storage.local
+- `src/content.css`: Overlay toolbar, highlight outline, notification toast styles
+- `src/background.js`: Service worker for install handler and message relay
+
+**Final Build Verification**
+- Client: 0 TypeScript errors
+- Server: 0 TypeScript errors
+- Vite build: 1937 modules, 1.61s, ~383KB main bundle gzipped to 118KB
+
+### Expansion Feature Summary
+
+All requested expansion features (except Launch & Business) are complete:
+
+| Feature | Status |
+|---------|--------|
+| MCP Push Integration | ✅ All 501 stubs replaced with real Webflow API v2 integration |
+| Community Library | ✅ Publish/install templates & presets, browsing page |
+| Team/Agency Features | ✅ Teams, members, roles, invitations, team management page |
+| Browser Extension | ✅ Chrome MV3 extension with capture/inspect/copy |
+| Undo/Redo Persistence | ✅ localStorage-backed history store |
+| Audit Scheduling | ✅ Daily/weekly/biweekly/monthly schedules |
+| AI Integration | ✅ Class names, code review, SEO/AEO recommendations |
+| Skeleton Loading | ✅ All pages use skeleton loaders |
+| Notification System | ✅ Bell component, preferences, alerts |
+| Command Palette | ✅ Cmd+K with search, navigation, actions |
+| Settings System | ✅ 7 tabs: Account, Appearance, Integrations, etc. |
+| Data Export | ✅ Full JSON export of all user data |
+| Guide System | ✅ In-app documentation with deep linking |
+| Handoff Reports | ✅ Builder, viewer, public shared reports |
+| Activity Log | ✅ Full timeline with filtering |
+| Favorites | ✅ Star projects, templates, presets |
+| Health Dashboard | ✅ Aggregate metrics, sparklines, trends |
+| Audit Comparison | ✅ Side-by-side score diffs |
+| CSV Export | ✅ Audit findings as CSV |
+
+#### Expansion Session 7 (2026-03-16)
+
+**Community Library API Endpoint Fix**
+- Fixed frontend hooks in `use-community.ts` to match actual backend route paths:
+  - `useCommunityTemplates`: `/community` → `/community/templates`
+  - `usePublishTemplate`: POST `/community/publish` with body → POST `/community/templates/:id/publish`
+  - `useUnpublishTemplate`: DELETE `/community/:id` → POST `/community/templates/:id/unpublish`
+  - `useInstallTemplate`: POST `/community/:id/fork` → POST `/community/templates/:id/install`
+  - `useCommunityTemplate`: `/community/:id` → `/community/browse/:id`
+  - `usePublishPreset`: POST `/community/presets/publish` with body → POST `/community/presets/:id/publish`
+  - `useUnpublishPreset`: DELETE → POST `/community/presets/:id/unpublish`
+  - `useToggleLike`: `/community/:id/like` → `/community/browse/:id/like`
+- Added `.then(r => r.data)` to template/preset list hooks to unwrap `{ data, total, hasMore }` response
+- Added toast notifications to publish/unpublish mutations
+- Updated community page `TemplateCard` to match actual API response shape (no `downloads`/`likes`/`authorName` from published template endpoint)
+- Removed unused `Heart` import from community page
+
+**Build Verification**
+- Client: 0 TypeScript errors
+- Server: 0 TypeScript errors
+- Vite build: 1937 modules, 1.68s, ~383KB main bundle gzipped to 118KB
+
+### Not Built (per user directive)
+- Stripe billing / payment integration
+- Landing page / marketing site
+- SSR / production deployment optimization
+- Beta infrastructure (waitlist, invites)
+- Analytics / monitoring (Sentry, Mixpanel)

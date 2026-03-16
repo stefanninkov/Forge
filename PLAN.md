@@ -623,3 +623,228 @@ GET  /api/projects/:id/alerts        — List alerts
 | Animation attribute prefix | `data-anim` / `data-gsap` / `data-hover` (descriptive) | Clarity over brevity |
 | Custom animation sharing | Publishable to community library (opt-in) | Future SaaS value |
 | Git workflow | Stage changes, user reviews and commits | Control over codebase |
+
+---
+
+## REVISION 2 — Architecture Additions (March 2026)
+
+The following modules, systems, and architectural changes extend the original plan. All detailed implementation specs are in the expansion prompt (forge-expansion-complete.md). This section provides the high-level architecture overview.
+
+---
+
+## Module 8: Unified Visual Editing Engine
+
+The foundation that powers ALL visual editing across Forge. Built as reusable React components shared by every module.
+
+### Components
+- **Visual CSS Editor (Style Panel):** Webflow-style grouped property panel (Layout, Sizing, Spacing, Typography, Backgrounds, Borders, Effects) with code view toggle showing raw CSS. Real-time preview updates with batch mode option. Responsive breakpoint controls. Undo/redo.
+- **Visual GSAP/Animation Editor:** Two modes — Preset mode (grid picker + parameter sliders) and Timeline mode (full keyframe editor with draggable blocks, easing curve editor, ScrollTrigger visualization, scrub preview).
+- **Live Preview Engine:** Sandboxed iframe rendering with `srcdoc`. Placeholder content for text/images. Responsive preview toggles (desktop/tablet/mobile). Animation preview toggle. Puppeteer-generated thumbnails for grid views.
+
+### Architecture
+These are context-aware components — they appear wherever editing is needed (template library, Figma translator, animation playground, section capture). Context-specific panels (animation editor) only show when relevant.
+
+---
+
+## Module 9: Section Capture System
+
+Three capture methods for saving sections from existing projects:
+
+- **URL Crawl:** Paste any URL → Puppeteer fetches + renders → user selects section → Forge extracts HTML/CSS/JS
+- **Webflow MCP Capture:** Select elements from connected Designer → extract structure, classes, styles, attributes
+- **Manual Code Paste:** Paste HTML, CSS, JS into syntax-highlighted editors
+
+All methods lead to the same post-capture workflow: preview → edit structure → edit CSS → edit animations → assign semantics → choose save type (skeleton/styled/full) → organize (categories, folders, tags).
+
+### Library Organization
+- Auto-categorization by section type
+- Custom folders/collections (user-created, nestable)
+- A section can exist in multiple folders
+- Search across name, description, tags, class names
+- Filter by category, type, capture method, project source, has-animations
+
+---
+
+## Module 10: Semantic HTML & Accessibility System
+
+Integrated into structure trees across all modules.
+
+- **Auto-detection rules:** Maps layer/class names to semantic HTML tags (nav, section, footer, header, aside, h1-h6, a, button, img, ul/ol/li, form)
+- **AI-enhanced detection:** Claude API provides nuanced suggestions (article for cards, nav with aria-label for breadcrumbs, form role="search")
+- **Visual indicators:** Color-coded tag badges (green = semantic, gray = generic, amber = suggestion pending, red = accessibility issue)
+- **Heading hierarchy checker:** Warns on skipped levels, non-blocking override
+- **Pre-push accessibility checklist:** Summary of heading hierarchy, missing alt text, missing aria-labels, form accessibility, color contrast, semantic coverage percentage
+
+---
+
+## Module 11: Unit System (px / rem / em)
+
+- **Global project default:** Set default unit per project (px/rem/em, default rem)
+- **Per-input toggle:** Every numeric input has clickable unit badge cycling px/rem/em
+- **Conversion dialog:** "Convert 44px to 2.75rem?" with Convert/Keep options
+- **Batch conversion:** When changing global default, option to convert all existing values
+- **Integration:** Uses scaling system base font size for px↔rem conversion
+
+---
+
+## Module 12: REM Fluid Scaling System
+
+Configurable fluid responsive scaling pushed to Webflow's `<head>` via MCP.
+
+### Configuration
+Visual breakpoint editor with 4 cards (Desktop, Tablet, Mobile Landscape, Mobile Portrait). Each card: base font size, ideal width, min width, max width, real-time preview calculation.
+
+### Smart Defaults
+- Desktop: base 16, ideal 1440, min 992, max 1920
+- Tablet: ideal 834, min 768, max 991
+- Mobile Landscape: ideal 550, min 480, max 767
+- Mobile Portrait: ideal 375, min 320, max 479
+
+### Figma Integration
+Auto-populates desktop ideal width from Figma frame dimensions on import.
+
+### Push to Webflow
+Generates complete CSS code block → pushes to `<head>` custom code via MCP Data API.
+
+---
+
+## Module 13: In-App Guide System
+
+Two-layer help system:
+- **Tooltip layer:** `?` icon on every control with one-sentence explanation + "Learn more →" link
+- **Full guide section:** Dedicated /guide page with: Getting Started, Figma → Webflow (step-by-step), Templates & Sections, Animation Engine, CSS Visual Editor, REM Scaling System, Project Setup, SEO/Speed/AEO guides
+- **Contextual help:** First-time module walkthroughs, smart empty states, error troubleshooting
+
+---
+
+## Module 14: Master Script Status System
+
+- **Status bar:** Persistent 32px bar at bottom of project pages. States: hidden (no animations), amber (needs generation), blue (generated not pushed), green (active), amber (outdated)
+- **Contextual reminders:** After adding first animation, after push with animation attributes, in pre-push review
+- **Scaling system status:** Alongside master script status (configured/pushed/not configured)
+
+---
+
+## Revised Figma → Webflow Pipeline (7 Steps)
+
+1. **Import:** Paste Figma URL → fetch file → select page/frame
+2. **Audit + Structure:** Side-by-side view — Figma preview left, proposed Webflow structure right. Audit issues flagged. AI Assist toggle for smart suggestions.
+3. **Semantic HTML:** Suggestions with visual indicators. Approve/dismiss per element or batch. Heading hierarchy checker.
+4. **Visual Styling (optional):** CSS style panel pre-filled with Figma-extracted values. Real-time preview.
+5. **Animation Assignment (optional):** Animation picker + AI recommendations. Timeline editor for complex sequences.
+6. **Pre-Push Review:** Full preview with responsive toggles. Class name review list (editable). Image checklist (auto-downloaded from Figma, manual upload to Webflow). Accessibility summary. Push options (scope, styles, animations, text content).
+7. **Push:** MCP creates elements with semantic tags, Client-First classes, attributes, text. Batched calls for deep nesting (3-level MCP limit handled transparently). Image placeholders with `data-figma-image` attributes.
+
+### MCP Constraints Handled
+- 3-level nesting limit → Forge batches sequential calls, referencing parent IDs
+- No inline styles → All styles as named Client-First classes via style_tool
+- No image upload → Placeholder elements + image checklist for manual upload
+- Designer must be open → Status indicator + auto-reconnect + action blocking
+- Class naming → Auto-generated Client-First names with full review/rename before push
+
+---
+
+## Additional Features
+
+### Command Palette (Cmd+K)
+Global fuzzy search across navigation, actions, templates, animations, projects, settings. Full keyboard shortcut system.
+
+### Cross-Module Workflow Connections
+- Figma → Animation recommendations (AI suggests per section)
+- Speed optimizer → Animation engine (performance issue links to configurator)
+- SEO audit → Template library (update templates from audit findings)
+- Figma push → Setup wizard (auto-create page-specific tasks)
+- Audit scores → Dashboard (mini score indicators on project cards)
+- Template push → Master script reminder
+
+### AI Enhancements
+- Content extraction from Figma (text mapping to structure nodes)
+- Animation recommendations (context-aware per section type)
+- SEO content suggestions (meta descriptions, alt text, content structure)
+- Code review for custom embeds (performance, security, Webflow compatibility)
+
+### Client Handoff Report Generator
+Configurable PDF or shareable web link report: project overview, setup completion, structure, animations, speed/SEO/AEO scores, recommendations.
+
+### Site Health Monitoring Dashboard
+Aggregated scores across projects, trend charts, issues feed, weekly email digest.
+
+### Animation Engine Upgrades
+- Page transition presets (View Transitions API)
+- Animation performance profiler (FPS, paint/composite analysis)
+
+### Quality of Life
+Clipboard history, bulk attribute application, template diff view, project duplication, favorites, project notes, recently visited, full keyboard shortcut system.
+
+### Activity Log
+Per-project chronological feed of all actions. Implemented as middleware utility.
+
+### Settings System
+7 tabs: Account (profile, email, password, sessions, delete account), Projects (rename, connections, animation config, archive, delete), Integrations (MCP, Figma, Google, webhooks, API keys), Notifications (alerts, digest, monitoring frequency), Appearance (theme, sidebar, defaults), Data & Export (JSON/CSV export, import, report preferences), Danger Zone.
+
+---
+
+## Revised Database Schema
+
+### New Tables (in addition to original schema)
+
+- **favorites:** userId, entityType, entityId (unique per user+entity)
+- **activityLog:** projectId, userId, actionType, actionData (JSON)
+- **sessions:** userId, token, deviceInfo, ipAddress, lastActiveAt, expiresAt
+- **handoffReports:** projectId, sections (JSON), format, fileUrl, shareToken, sharePassword
+- **notificationPreferences:** userId, auditAlerts, thresholds, weeklyDigest, monitoringFrequency
+- **capturedSections:** userId, name, category, captureMethod, sourceUrl, html, css, javascript, structure (JSON), styles (JSON), animationAttrs (JSON), saveType, thumbnailUrl, tags, folderId, isPublished
+- **sectionFolders:** userId, name, parentId (self-referential nesting)
+- **scalingConfigs:** projectId, breakpoints (JSON: desktop/tablet/mobileLandscape/mobilePortrait each with base/ideal/min/max), isPushed, lastPushedAt
+
+### Modified Tables
+
+- **projects:** add notes, isArchived, archivedAt, lastVisitedAt, defaultUnit (px/rem/em)
+- **users:** add isDeactivated, deactivatedAt, deletionScheduledAt, companyLogo
+- **templates:** add html, css, javascript, thumbnailUrl, folderId
+
+---
+
+## Revised Phased Build Plan
+
+### Phase 8: Unified Visual Editing Engine (Weeks 25-28)
+- Visual CSS Editor (style panel component)
+- Unit system (px/rem/em toggle, conversion)
+- Live Preview Engine (iframe, responsive, animation preview)
+- Visual Animation Editor (preset mode)
+- Timeline Editor (keyframe mode)
+
+### Phase 9: Core Systems (Weeks 29-32)
+- REM Scaling System (config UI, code generator, MCP push)
+- Semantic HTML & Accessibility system
+- Section Capture (URL crawl, MCP capture, manual paste)
+- MCP Connection Management (status, auto-reconnect, blocking)
+- Master Script Status System
+
+### Phase 10: Figma Pipeline Upgrade (Weeks 33-35)
+- Revised 7-step pipeline
+- Image checklist with Figma auto-download
+- Class name review before push
+- Pre-push accessibility checklist
+
+### Phase 11: Template System Upgrade (Weeks 36-37)
+- Visual preview rendering (Puppeteer thumbnails, live iframe)
+- Section library organization (folders, tags, search)
+- Template CSS/animation visual editing
+
+### Phase 12: Help & Guide (Weeks 38-39)
+- In-app guide (MDX content, full guide section)
+- Tooltip layer (every control across all editors)
+- Parameter explainer content
+- First-time walkthroughs
+
+### Phase 13: Features & Polish (Weeks 40-44)
+- Settings system (all 7 tabs)
+- Command palette + keyboard shortcuts
+- Cross-module connections
+- AI enhancements
+- Activity log
+- Quality of life features
+- Client handoff reports
+- Site health dashboard
+- Animation engine upgrades (page transitions, profiler)

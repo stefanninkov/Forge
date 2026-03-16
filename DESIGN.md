@@ -469,3 +469,254 @@ src/
 ```
 
 All files use **kebab-case** for filenames. Components use **PascalCase** for exports.
+
+---
+
+## REVISION 2 — Additional Component Patterns
+
+---
+
+## Visual CSS Editor (Style Panel)
+
+```
+Width: 320px fixed, right-side panel
+Background: --bg-primary
+Border-left: 1px --border-default
+```
+
+### Property Groups
+- Collapsible sections with header: 13px, weight 500, --text-secondary, uppercase, tracking-wide
+- Expand/collapse chevron: 12px icon, right-aligned
+- Group padding: 12px horizontal, 8px vertical between groups
+- Divider between groups: 1px --border-subtle
+
+### Property Inputs
+- Label: 11px, weight 500, --text-tertiary
+- Value input: height 28px (compact), font-size 13px, --font-mono, border 1px --border-default, radius 4px, padding 0 8px
+- Unit badge: 11px, --font-mono, --text-tertiary, clickable, hover --text-primary, padding 2px 4px, radius 3px, bg --surface-hover on hover
+- Slider: track height 4px, --border-default, thumb 14px circle, --accent fill for active portion
+- Color picker trigger: 20x20px square, border 1px --border-default, radius 4px, shows current color as fill
+- Dropdown: same height as inputs (28px), 13px font, --font-mono for values
+
+### Code View Toggle
+- Toggle button in panel header: "Visual" | "Code" text toggle, 12px, weight 500
+- Active state: --accent-text color, underline
+- Code view: Monaco editor or CodeMirror, font-size from Appearance settings (default 14px), --font-mono, dark theme matching app theme
+
+### Responsive Breakpoint Bar
+- Above style panel content: horizontal bar with 5 device icons (xxl/desktop/tablet/mobile-landscape/mobile)
+- Each icon: 16px, --text-tertiary default, --accent-text when active
+- Active breakpoint has a subtle bottom border in --accent
+- Spacing: 8px gap between icons
+
+---
+
+## Animation Timeline Editor
+
+```
+Full-width component (takes the content area)
+Background: --bg-secondary
+Min-height: 300px
+```
+
+### Time Ruler
+- Top bar: height 32px, --bg-tertiary
+- Tick marks every 0.1s (small), 0.5s (medium), 1.0s (large with label)
+- Label font: 11px, --font-mono, --text-tertiary
+- Playhead: vertical line 1px --accent, with triangle handle at top (8px)
+
+### Element Rows
+- Row height: 40px, border-bottom 1px --border-subtle
+- Row label: 13px, --font-mono, --text-secondary, left-aligned in a 180px label column
+- Background: alternating subtle --bg-primary / --bg-secondary for readability
+
+### Animation Blocks
+- Rounded rectangles: height 28px, radius 4px
+- CSS engine blocks: fill --forge-900 with --forge-500 left border (2px)
+- GSAP engine blocks: fill rgba(2, 132, 199, 0.15) with --info left border (2px)
+- Selected block: ring 2px --accent
+- Drag cursor: grab → grabbing
+- Resize handles: visible on hover, 4px wide zones on left/right edges, cursor col-resize
+
+### Keyframe Markers
+- Diamond shape: 8px, --accent fill
+- Hover: scale 1.2, glow effect
+- Selected: ring 2px --accent, brighter fill
+
+### Easing Curve Editor
+- Popup panel: 200x200px, --bg-elevated, border 1px --border-default, radius 8px, shadow
+- Bezier curve: 2px stroke, --accent
+- Control points: 8px circles, --accent, draggable
+- Grid lines: 1px --border-subtle
+- Preset buttons below: small pills with ease names (11px)
+
+### Transport Controls
+- Bottom bar: height 40px, --bg-tertiary, border-top 1px --border-default
+- Play/Pause: 24px icon button, --accent
+- Time display: --font-mono, 13px, --text-primary
+- Speed selector: 0.5x / 1x / 2x dropdown
+
+---
+
+## Status Bar (Master Script + Scaling System)
+
+```
+Position: fixed bottom, full width of content area (not sidebar)
+Height: 32px
+Z-index: above content, below modals
+```
+
+### States
+
+**No animations (hidden):** Bar not rendered.
+
+**Warning (amber):**
+```
+Background: rgba(217, 119, 6, 0.08)
+Border-top: 1px rgba(217, 119, 6, 0.2)
+Text: 13px, --warning color
+Icon: ⚡ or lightning bolt lucide icon, 14px
+Action button: text button, --warning color, underline on hover
+```
+
+**Ready (blue):**
+```
+Background: rgba(2, 132, 199, 0.08)
+Border-top: 1px rgba(2, 132, 199, 0.2)
+Text: 13px, --info color
+```
+
+**Active (green):**
+```
+Background: transparent (minimal)
+Border-top: 1px --border-subtle
+Text: 13px, --text-tertiary
+Green dot: 6px circle, --success, inline before text
+```
+
+### Layout
+- Flex row, center-aligned vertically
+- Left: status icon + text
+- Right: action buttons (if any)
+- Padding: 0 16px
+- When both master script and scaling status show: separate with a `•` divider, --text-tertiary
+
+---
+
+## Help Tooltips
+
+```
+Background: --gray-900 (always dark, even in light theme)
+Text: --gray-50, 12px, --font-sans
+Max-width: 280px
+Padding: 8px 12px
+Radius: 6px
+Shadow: 0 4px 12px rgba(0, 0, 0, 0.2)
+Arrow: 6px triangle pointing toward trigger
+```
+
+- Appears on hover with 200ms delay
+- "Learn more →" link: 12px, --forge-400 color, underline on hover, displayed on its own line below the tooltip text
+- `?` trigger icon: 12px circle, --text-tertiary, hover --text-secondary, positioned right of label or inline after label text
+- Tooltip position: prefer top, fall back to right/bottom if clipped
+
+---
+
+## REM Scaling System Configuration
+
+### Breakpoint Card
+```
+Background: --bg-primary
+Border: 1px --border-default
+Radius: 8px
+Padding: 16px
+Margin-bottom: 12px
+```
+
+- **Header:** breakpoint name (e.g., "Desktop"), 14px, weight 600. Lucide icon left (Monitor, Tablet, Smartphone).
+- **Input rows:** label (11px, --text-tertiary) on left, input (height 32px, width 120px, --font-mono, text-right) on right. Unit label "px" as static suffix (not editable).
+- **Preview line:** 12px, --font-mono, --text-tertiary, italic. "At 1440px → 16px, At 1200px → 13.3px"
+- **Between cards:** subtle connecting line (1px --border-subtle, vertical, centered, 12px height) indicating breakpoint cascade.
+
+### Code Preview
+```
+Below breakpoint cards
+Background: --gray-900 (always dark)
+Border: 1px --border-default
+Radius: 8px
+Padding: 16px
+Font: --font-mono, 13px
+Max-height: 300px, overflow-y scroll
+```
+
+- Syntax highlighting: CSS keywords in --forge-400, values in --gray-300, comments in --gray-500
+- "Copy" button: top-right, ghost button, 12px text
+- "Push to Webflow" button: below code block, primary button style
+
+---
+
+## Section Capture UI
+
+### URL Capture View
+- URL input bar at top: full width, height 40px, placeholder "Paste a URL to capture a section..."
+- Below: iframe preview of the fetched page (full width, scrollable)
+- Selection mode: cursor changes to crosshair, click to select a top-level element, selected element gets a dashed 2px --accent border overlay
+- Bottom action bar: "Capture Selected" primary button, "Cancel" secondary button, captured element name shown
+
+### MCP Capture View
+- Page list from connected site: table with page name, slug, last modified
+- Click a page → structure tree loads
+- Multi-select on tree nodes → "Capture Selected" button
+
+### Manual Paste View
+- Three-tab editor: HTML | CSS | JavaScript
+- Each tab: syntax-highlighted code editor (Monaco/CodeMirror), full width
+- "Preview" button renders the combined code in iframe below
+- "Save to Library" button
+
+---
+
+## Unit Toggle Input
+
+```
+┌─────────────┬──────┐
+│   44        │ px ▾ │
+└─────────────┴──────┘
+```
+
+- Input area: standard input styling per DESIGN.md (height 28px for compact/style panel, 36px for forms)
+- Unit badge: right section, 24px wide, --bg-secondary, border-left 1px --border-default, --font-mono 11px, --text-secondary
+- Hover on unit badge: --surface-hover background, --text-primary color, cursor pointer
+- Click opens dropdown: 3 options (px, rem, em), active has checkmark, default has small dot indicator
+- Conversion dialog: inline below input, 12px text, --bg-tertiary, radius 4px, padding 6px 10px, fade-in 150ms. "[Convert] [Keep value]" as small text buttons.
+
+---
+
+## Template Library Cards (with Visual Preview)
+
+```
+Width: auto (grid-based, ~280px in 4-col grid)
+Background: --bg-primary
+Border: 1px --border-default
+Radius: 8px
+Overflow: hidden (thumbnail bleeds to edges)
+```
+
+- **Thumbnail area:** top, aspect-ratio 16/10, background --bg-secondary. Shows generated screenshot (WebP). Lazy loaded.
+- **Hover state:** thumbnail scales 1.02 (overflow hidden clips), action overlay fades in at bottom (gradient from transparent to --bg-primary, 48px height), containing icon buttons (Use, Preview, Edit, Delete) at 16px, --text-secondary, spaced 8px apart.
+- **Info area:** padding 12px. Template name: 13px, weight 500, --text-primary. Below: category badge + type badge (skeleton/styled/full) + variant count if >1.
+- **Star (favorite) icon:** top-right of thumbnail, 16px, appears on hover, --text-tertiary, click toggles --warning color fill.
+
+---
+
+## MCP Connection Indicator
+
+```
+Position: app header, right side, next to user avatar
+```
+
+- **Connected:** 8px circle, --success fill, subtle pulse animation (opacity 0.6→1, 2s infinite)
+- **Disconnected:** 8px circle, --error fill, no animation
+- **Reconnecting:** 8px circle, --warning fill, pulse animation faster (1s)
+- **Hover:** tooltip showing status text + site name
+- **Click:** popover (240px wide, --bg-elevated, radius 8px, border, shadow) with: site name, connection duration, last activity, Disconnect button, troubleshooting link

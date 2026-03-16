@@ -424,3 +424,193 @@ This is a large project that will span many context windows. To maintain continu
 
 5. **Test incrementally:** Run the app after completing each logical unit of work. Verify it works before moving on. Don't build 5 features and then discover the first one was broken.
 </context_management>
+
+---
+
+## REVISION 2 — Additional Build Instructions
+
+### New Core Systems to Understand
+
+<new_systems>
+
+#### Unified Visual Editing Engine
+The Visual CSS Editor, Animation Editor, Timeline Editor, and Live Preview are **reusable components** in `src/components/shared/editors/`. Every module that needs editing functionality imports from here — never build module-specific editors. When you build the style panel for templates, it's the same component used in the Figma translator, section capture, and animation playground.
+
+Key components to build:
+- `<StylePanel />` — Webflow-style CSS property groups with code view toggle
+- `<AnimationEditor />` — Preset picker mode + parameter sliders
+- `<TimelineEditor />` — Full keyframe timeline with drag-and-drop blocks
+- `<LivePreview />` — Sandboxed iframe renderer with responsive toggles and animation preview
+- `<UnitInput />` — Number input with px/rem/em unit toggle and conversion dialog
+- `<HelpTooltip />` — One-sentence tooltip with "Learn more →" link to guide
+
+These components are the foundation. Build and test them in isolation before integrating into modules.
+
+#### Unit System
+Every numeric input in the app uses `<UnitInput />`. This component handles:
+- Displaying the value with its unit
+- Unit switching (click badge → dropdown → conversion dialog)
+- Integration with the project's global default unit setting
+- Integration with the scaling system's base font size for conversion math
+
+Never use a raw `<input type="number" />` for sizing values. Always use `<UnitInput />`.
+
+#### Semantic HTML System
+Structure trees across all modules share a `<StructureTree />` component that includes:
+- HTML tag badge with color coding (green/gray/amber/red)
+- Tag dropdown selector (grouped by HTML category)
+- Suggestion indicators (amber dot for pending suggestions)
+- Heading hierarchy warnings
+- Batch accept/dismiss actions
+
+#### Master Script Status
+Use the `useMasterScriptStatus()` hook in every project-level page. It provides:
+- `hasAnimations` — whether any animations exist in the project
+- `scriptStatus` — 'none' | 'outdated' | 'generated' | 'pushed'
+- `scalingStatus` — 'not_configured' | 'configured' | 'pushed'
+- `generateScript()` — action to generate the master script
+- `pushScript()` — action to push via MCP
+
+The `<StatusBar />` component consumes this hook and renders at the bottom of project pages.
+
+#### MCP Connection
+Use the `useMCPConnection()` hook globally. It provides:
+- `status` — 'connected' | 'disconnected' | 'reconnecting'
+- `siteInfo` — connected site name, URL
+- `reconnect()` — manual reconnect action
+
+All MCP-dependent actions check this status before executing. Use the `<MCPGuard />` wrapper component that shows the disconnection message and blocks children when disconnected.
+
+</new_systems>
+
+### Guide Content
+
+<guide_content>
+Store guide content as MDX files in `src/content/guide/`. Structure:
+
+```
+src/content/guide/
+├── getting-started/
+│   ├── overview.mdx
+│   ├── first-project.mdx
+│   ├── connecting-webflow.mdx
+│   └── connecting-figma.mdx
+├── figma-to-webflow/
+│   ├── preparing-figma.mdx
+│   ├── importing.mdx
+│   ├── audit-results.mdx
+│   ├── ai-assist.mdx
+│   ├── editing-structure.mdx
+│   ├── semantic-html.mdx
+│   ├── heading-hierarchy.mdx
+│   ├── visual-styling.mdx
+│   ├── adding-animations.mdx
+│   ├── pre-push-review.mdx
+│   ├── pushing-to-webflow.mdx
+│   └── after-push.mdx
+├── templates/
+├── animations/
+│   ├── how-it-works.mdx
+│   ├── css-vs-gsap.mdx
+│   ├── playground.mdx
+│   ├── parameters.mdx
+│   ├── timeline.mdx
+│   ├── easing.mdx
+│   ├── scroll.mdx
+│   ├── split-text.mdx
+│   ├── stagger.mdx
+│   ├── hover-click.mdx
+│   ├── page-load.mdx
+│   ├── master-script.mdx
+│   └── page-transitions.mdx
+├── css-editor/
+├── scaling-system/
+├── project-setup/
+└── seo-speed-aeo/
+```
+
+Each MDX file supports: markdown formatting, code blocks with syntax highlighting, embedded React components for interactive demos, and anchor IDs for tooltip deep-linking.
+
+URL structure: `/guide/[section]/[subsection]` — tooltip "Learn more" links use anchors like `/guide/animations/parameters#duration`.
+</guide_content>
+
+### Tooltip Implementation
+
+<tooltip_rules>
+Every control, parameter input, property label, and HTML tag badge in the app has a `<HelpTooltip />` attached. This is non-negotiable — it's a core UX feature, not an afterthought.
+
+The tooltip content is stored in a centralized constants file: `src/content/tooltips.ts`. This file exports objects keyed by feature area:
+
+```typescript
+export const animationTooltips = {
+  duration: {
+    text: "How long the animation takes from start to finish.",
+    guideLink: "/guide/animations/parameters#duration",
+  },
+  delay: {
+    text: "Time to wait before the animation begins. Use to sequence multiple elements.",
+    guideLink: "/guide/animations/parameters#delay",
+  },
+  // ... etc
+};
+
+export const cssTooltips = { /* ... */ };
+export const semanticTooltips = { /* ... */ };
+```
+
+This centralization ensures: consistent tone, easy updating, no duplicated strings, and the ability to eventually internationalize.
+
+Rules for writing tooltip text:
+- One sentence maximum
+- Start with what it does, not what it is
+- Use practical language, not technical definitions
+- Include a concrete example value where helpful
+- Never use jargon without explanation
+- Write for someone who knows Webflow but is new to Forge
+</tooltip_rules>
+
+### Scaling System Integration
+
+<scaling_integration>
+When the REM scaling system is configured for a project, it affects multiple systems:
+
+1. **Live Preview iframe:** Inject the scaling system CSS into the iframe's `<style>` tag so rem values render correctly at the preview width
+2. **Unit conversion:** The `<UnitInput />` component reads the project's scaling config to get the base font size for px↔rem conversion
+3. **Animation distance values:** When the unit is set to rem, distance values in data attributes include the unit: `data-anim-distance="2.75rem"`
+4. **Master script:** The generated master script respects rem values in animation parameters
+
+The scaling system config is stored per-project in the database. Create a `useScalingSystem()` hook that provides the current project's config to any component that needs it.
+</scaling_integration>
+
+### Section Capture Backend
+
+<capture_backend>
+The URL crawl capture method runs entirely server-side:
+
+1. Client sends URL to `POST /api/sections/capture/url`
+2. Backend launches Puppeteer, navigates to URL, waits for page load
+3. Returns full page HTML to client
+4. Client renders in iframe, user selects a section
+5. Client sends selection (CSS selector or element path) back to backend
+6. Backend extracts: HTML subtree, computed CSS for all elements in subtree, any inline scripts targeting those elements
+7. Returns cleaned HTML/CSS/JS to client for preview and saving
+
+Never attempt to crawl from the browser — CORS will block it. All fetching and parsing happens server-side.
+</capture_backend>
+
+### Updated Quality Checklist
+
+<updated_quality_checklist>
+In addition to the original checklist, verify:
+
+- [ ] Every numeric sizing input uses `<UnitInput />` component, never raw `<input />`
+- [ ] Every control/parameter has a `<HelpTooltip />` with tooltip text from centralized constants
+- [ ] All structure trees use the shared `<StructureTree />` component with semantic HTML features
+- [ ] Project pages include `<StatusBar />` consuming `useMasterScriptStatus()` hook
+- [ ] MCP-dependent actions are wrapped in `<MCPGuard />` or check `useMCPConnection()` status
+- [ ] Visual editors use the shared components from `src/components/shared/editors/`
+- [ ] Scaling system CSS is injected into all `<LivePreview />` iframes when configured
+- [ ] Guide links in tooltips resolve to actual guide pages (no dead links)
+- [ ] Unit conversion uses the project's scaling system base font size
+- [ ] Undo/redo works in visual editors (style panel and timeline)
+</updated_quality_checklist>
