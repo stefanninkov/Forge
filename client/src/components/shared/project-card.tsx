@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MoreHorizontal, Pencil, Trash2, FolderOpen, Settings2, Star, Copy, StickyNote } from 'lucide-react';
+import { MoreHorizontal, Pencil, Trash2, FolderOpen, Settings2, Star, Copy, StickyNote, FileText, Zap, Search, Bot } from 'lucide-react';
 import { useIsFavorited, useToggleFavorite } from '@/hooks/use-favorites';
+import { useProjectScores } from '@/hooks/use-project-scores';
 import type { Project } from '@/types/project';
 
 export interface ProjectCardProps {
@@ -10,13 +11,15 @@ export interface ProjectCardProps {
   onDelete: (project: Project) => void;
   onDuplicate?: (project: Project) => void;
   onNotes?: (project: Project) => void;
+  onHandoffReport?: (project: Project) => void;
 }
 
-export function ProjectCard({ project, onEdit, onDelete, onDuplicate, onNotes }: ProjectCardProps) {
+export function ProjectCard({ project, onEdit, onDelete, onDuplicate, onNotes, onHandoffReport }: ProjectCardProps) {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const { data: isFavorited } = useIsFavorited('project', project.id);
   const toggleFavorite = useToggleFavorite();
+  const { data: scores } = useProjectScores(project.id);
 
   const formattedDate = new Date(project.createdAt).toLocaleDateString('en-US', {
     month: 'short',
@@ -274,6 +277,34 @@ export function ProjectCard({ project, onEdit, onDelete, onDuplicate, onNotes }:
                 <StickyNote size={14} />
                 <span>Notes</span>
               </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setMenuOpen(false);
+                  onHandoffReport?.(project);
+                }}
+                className="flex items-center w-full border-none bg-transparent cursor-pointer"
+                style={{
+                  height: 36,
+                  padding: '0 12px',
+                  gap: 8,
+                  fontSize: 'var(--text-sm)',
+                  fontWeight: 500,
+                  color: 'var(--text-secondary)',
+                  fontFamily: 'var(--font-sans)',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--surface-hover)';
+                  e.currentTarget.style.color = 'var(--text-primary)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                  e.currentTarget.style.color = 'var(--text-secondary)';
+                }}
+              >
+                <FileText size={14} />
+                <span>Handoff Report</span>
+              </button>
               <div style={{ height: 1, backgroundColor: 'var(--border-subtle)', margin: '4px 0' }} />
               <button
                 onClick={(e) => {
@@ -307,10 +338,31 @@ export function ProjectCard({ project, onEdit, onDelete, onDuplicate, onNotes }:
         </div>
       </div>
 
+      {/* Audit scores */}
+      {scores && (scores.speed !== null || scores.seo !== null || scores.aeo !== null) && (
+        <div
+          className="flex items-center"
+          style={{
+            marginTop: 12,
+            gap: 8,
+          }}
+        >
+          {scores.speed !== null && (
+            <ScoreBadge icon={Zap} label="Speed" score={scores.speed} />
+          )}
+          {scores.seo !== null && (
+            <ScoreBadge icon={Search} label="SEO" score={scores.seo} />
+          )}
+          {scores.aeo !== null && (
+            <ScoreBadge icon={Bot} label="AEO" score={scores.aeo} />
+          )}
+        </div>
+      )}
+
       {/* Footer */}
       <div
         style={{
-          marginTop: 16,
+          marginTop: scores && (scores.speed !== null || scores.seo !== null || scores.aeo !== null) ? 8 : 16,
           paddingTop: 12,
           borderTop: '1px solid var(--border-subtle)',
           fontSize: 'var(--text-xs)',
@@ -319,6 +371,32 @@ export function ProjectCard({ project, onEdit, onDelete, onDuplicate, onNotes }:
       >
         Created {formattedDate}
       </div>
+    </div>
+  );
+}
+
+function ScoreBadge({ icon: Icon, label, score }: { icon: typeof Zap; label: string; score: number }) {
+  const rounded = Math.round(score);
+  const color = rounded >= 80 ? 'var(--accent)' : rounded >= 60 ? '#f59e0b' : 'var(--error)';
+  const bg = rounded >= 80 ? 'rgba(16, 185, 129, 0.08)' : rounded >= 60 ? 'rgba(245, 158, 11, 0.08)' : 'rgba(239, 68, 68, 0.08)';
+
+  return (
+    <div
+      className="flex items-center"
+      title={`${label}: ${rounded}`}
+      style={{
+        gap: 4,
+        padding: '2px 6px',
+        borderRadius: 'var(--radius-sm)',
+        backgroundColor: bg,
+        fontSize: 'var(--text-xs)',
+        fontWeight: 500,
+        fontFamily: 'var(--font-mono)',
+        color,
+      }}
+    >
+      <Icon size={10} />
+      <span>{rounded}</span>
     </div>
   );
 }

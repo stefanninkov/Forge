@@ -88,8 +88,27 @@ export default function ReportsPage() {
       <div style={{ maxWidth: 900, margin: '0 auto', padding: '24px' }}>
         {/* Loading state */}
         {isLoading && (
-          <div className="flex items-center justify-center" style={{ height: 400 }}>
-            <Loader2 size={24} className="animate-spin" style={{ color: 'var(--text-tertiary)' }} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, animation: 'fadeIn 200ms ease-out' }}>
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div
+                key={i}
+                style={{
+                  border: '1px solid var(--border-default)',
+                  borderRadius: 8,
+                  padding: 16,
+                  backgroundColor: 'var(--bg-primary)',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                  <div style={{ width: 16, height: 16, borderRadius: 4, backgroundColor: 'var(--surface-hover)', animation: 'skeletonPulse 1.5s ease-in-out infinite' }} />
+                  <div style={{ width: 200, height: 16, borderRadius: 6, backgroundColor: 'var(--surface-hover)', animation: 'skeletonPulse 1.5s ease-in-out infinite', animationDelay: '0.1s' }} />
+                </div>
+                <div style={{ display: 'flex', gap: 12 }}>
+                  <div style={{ width: 80, height: 12, borderRadius: 4, backgroundColor: 'var(--surface-hover)', animation: 'skeletonPulse 1.5s ease-in-out infinite', animationDelay: '0.2s' }} />
+                  <div style={{ width: 60, height: 12, borderRadius: 4, backgroundColor: 'var(--surface-hover)', animation: 'skeletonPulse 1.5s ease-in-out infinite', animationDelay: '0.3s' }} />
+                </div>
+              </div>
+            ))}
           </div>
         )}
 

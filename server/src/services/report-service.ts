@@ -141,5 +141,8 @@ export async function generateShareToken(id: string, userId: string) {
   return prisma.handoffReport.update({
     where: { id },
     data: { shareToken, isPublic: true },
+    include: {
+      project: { select: { id: true, name: true } },
+    },
   });
 }

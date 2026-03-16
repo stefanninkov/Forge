@@ -160,20 +160,20 @@ export function ProjectNotesPanel({ projectId, projectName, open, onClose }: Pro
         {/* Body */}
         <div style={{ flex: 1, padding: 20, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           {isLoading ? (
-            <div
-              className="flex items-center justify-center"
-              style={{ flex: 1, opacity: 0, animation: 'fadeIn 200ms ease-out 200ms forwards' }}
-            >
-              <div
-                style={{
-                  width: 20,
-                  height: 20,
-                  border: '2px solid var(--border-default)',
-                  borderTopColor: 'var(--accent)',
-                  borderRadius: '50%',
-                  animation: 'spin 1s linear infinite',
-                }}
-              />
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8, animation: 'fadeIn 200ms ease-out' }}>
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div
+                  key={i}
+                  style={{
+                    height: 14,
+                    width: i === 5 ? '40%' : '100%',
+                    borderRadius: 4,
+                    backgroundColor: 'var(--surface-hover)',
+                    animation: 'skeletonPulse 1.5s ease-in-out infinite',
+                    animationDelay: `${i * 0.05}s`,
+                  }}
+                />
+              ))}
             </div>
           ) : (
             <textarea
