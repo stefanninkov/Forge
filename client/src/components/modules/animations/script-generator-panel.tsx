@@ -1,11 +1,12 @@
 import { useState, useCallback } from 'react';
-import { X, Copy, Check, Code, Settings2, Loader2 } from 'lucide-react';
+import { X, Copy, Check, Code, Settings2, Loader2, History, ChevronDown, ChevronUp } from 'lucide-react';
 import { useProjects } from '@/hooks/use-projects';
 import {
   useProjectAnimationConfig,
   useUpdateProjectAnimationConfig,
   useGenerateMasterScript,
 } from '@/hooks/use-animations';
+import { useScriptHistory } from '@/hooks/use-script-history';
 
 export interface ScriptGeneratorPanelProps {
   open: boolean;
@@ -15,11 +16,13 @@ export interface ScriptGeneratorPanelProps {
 export function ScriptGeneratorPanel({ open, onClose }: ScriptGeneratorPanelProps) {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
 
   const { data: projects } = useProjects();
   const { data: animConfig } = useProjectAnimationConfig(selectedProjectId);
   const updateConfig = useUpdateProjectAnimationConfig(selectedProjectId);
   const generateScript = useGenerateMasterScript(selectedProjectId);
+  const { data: scriptHistory } = useScriptHistory(selectedProjectId ?? '');
 
   // Auto-select first project
   if (!selectedProjectId && projects && projects.length > 0) {
@@ -509,6 +512,91 @@ export function ScriptGeneratorPanel({ open, onClose }: ScriptGeneratorPanelProp
                   </>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* Version history */}
+          {scriptHistory && scriptHistory.versions.length > 0 && (
+            <div
+              style={{
+                marginTop: 16,
+                border: '1px solid var(--border-default)',
+                borderRadius: 'var(--radius-lg)',
+                overflow: 'hidden',
+              }}
+            >
+              <button
+                onClick={() => setShowHistory(!showHistory)}
+                className="flex items-center justify-between w-full border-none bg-transparent cursor-pointer"
+                style={{
+                  padding: '10px 12px',
+                  fontFamily: 'var(--font-sans)',
+                }}
+              >
+                <div className="flex items-center" style={{ gap: 6 }}>
+                  <History size={14} style={{ color: 'var(--text-tertiary)' }} />
+                  <span style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--text-primary)' }}>
+                    Version History
+                  </span>
+                  <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)', fontFamily: 'var(--font-mono)' }}>
+                    ({scriptHistory.versions.length})
+                  </span>
+                </div>
+                <span style={{ color: 'var(--text-tertiary)' }}>
+                  {showHistory ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                </span>
+              </button>
+              {showHistory && (
+                <div>
+                  {[...scriptHistory.versions].reverse().map((v) => (
+                    <div
+                      key={v.version}
+                      className="flex items-center justify-between"
+                      style={{
+                        padding: '8px 12px',
+                        borderTop: '1px solid var(--border-subtle)',
+                      }}
+                    >
+                      <div className="flex items-center" style={{ gap: 8 }}>
+                        <span
+                          style={{
+                            fontSize: 'var(--text-xs)',
+                            fontFamily: 'var(--font-mono)',
+                            fontWeight: 600,
+                            color: v.version === scriptHistory.currentVersion ? 'var(--accent)' : 'var(--text-primary)',
+                          }}
+                        >
+                          v{v.version}
+                        </span>
+                        {v.version === scriptHistory.currentVersion && (
+                          <span
+                            style={{
+                              fontSize: '9px',
+                              fontWeight: 600,
+                              color: 'var(--accent)',
+                              padding: '1px 5px',
+                              borderRadius: 'var(--radius-sm)',
+                              backgroundColor: 'var(--accent-subtle)',
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.05em',
+                            }}
+                          >
+                            Current
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center" style={{ gap: 12 }}>
+                        <span style={{ fontSize: 'var(--text-xs)', fontFamily: 'var(--font-mono)', color: 'var(--text-tertiary)' }}>
+                          {v.stats.totalSize}
+                        </span>
+                        <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)' }}>
+                          {new Date(v.generatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 

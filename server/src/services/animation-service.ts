@@ -175,31 +175,99 @@ export async function updateProjectAnimationConfig(
   });
 }
 
-/** Generate the master animation script for a project */
+interface ScriptVersion {
+  version: number;
+  script: string;
+  stats: { cssAnimations: number; gsapAnimations: number; totalSize: string };
+  generatedAt: string;
+}
+
+interface ScriptConfig {
+  currentVersion: number;
+  versions: ScriptVersion[];
+}
+
+/** Generate the master animation script for a project (with versioning) */
 export async function generateMasterScript(
   projectId: string,
   userId: string,
-): Promise<{ script: string; stats: { cssAnimations: number; gsapAnimations: number; totalSize: string } }> {
+): Promise<{ script: string; version: number; stats: { cssAnimations: number; gsapAnimations: number; totalSize: string } }> {
   const project = await prisma.project.findFirst({
     where: { id: projectId, userId },
-    select: { id: true, animationConfig: true },
+    select: { id: true, animationConfig: true, scriptConfig: true },
   });
   if (!project) throw new NotFoundError('Project');
 
-  const config = (project.animationConfig as Record<string, unknown>) ?? {};
-  const useLenis = config.useLenis === true;
+  const animConfig = (project.animationConfig as Record<string, unknown>) ?? {};
+  const useLenis = animConfig.useLenis === true;
 
   const script = buildMasterScript(useLenis);
   const sizeKB = (new TextEncoder().encode(script).length / 1024).toFixed(1);
+  const stats = { cssAnimations: 14, gsapAnimations: 7, totalSize: `${sizeKB} KB` };
 
-  return {
+  // Version management
+  const existing = (project.scriptConfig as ScriptConfig | null) ?? { currentVersion: 0, versions: [] };
+  const newVersion = existing.currentVersion + 1;
+  const versionEntry: ScriptVersion = {
+    version: newVersion,
     script,
-    stats: {
-      cssAnimations: 14,
-      gsapAnimations: 7,
-      totalSize: `${sizeKB} KB`,
-    },
+    stats,
+    generatedAt: new Date().toISOString(),
   };
+
+  // Keep last 10 versions
+  const versions = [...existing.versions, versionEntry].slice(-10);
+
+  await prisma.project.update({
+    where: { id: projectId },
+    data: {
+      scriptConfig: { currentVersion: newVersion, versions } as unknown as Prisma.InputJsonValue,
+      scriptStatus: 'OUTDATED',
+    },
+  });
+
+  return { script, version: newVersion, stats };
+}
+
+/** Get script version history for a project */
+export async function getScriptHistory(
+  projectId: string,
+  userId: string,
+): Promise<{ currentVersion: number; versions: Omit<ScriptVersion, 'script'>[] }> {
+  const project = await prisma.project.findFirst({
+    where: { id: projectId, userId },
+    select: { scriptConfig: true },
+  });
+  if (!project) throw new NotFoundError('Project');
+
+  const config = (project.scriptConfig as ScriptConfig | null) ?? { currentVersion: 0, versions: [] };
+  return {
+    currentVersion: config.currentVersion,
+    versions: config.versions.map(({ version, stats, generatedAt }) => ({
+      version,
+      stats,
+      generatedAt,
+    })),
+  };
+}
+
+/** Get a specific script version */
+export async function getScriptVersion(
+  projectId: string,
+  userId: string,
+  version: number,
+): Promise<{ script: string; version: number; stats: { cssAnimations: number; gsapAnimations: number; totalSize: string }; generatedAt: string }> {
+  const project = await prisma.project.findFirst({
+    where: { id: projectId, userId },
+    select: { scriptConfig: true },
+  });
+  if (!project) throw new NotFoundError('Project');
+
+  const config = (project.scriptConfig as ScriptConfig | null) ?? { currentVersion: 0, versions: [] };
+  const found = config.versions.find((v) => v.version === version);
+  if (!found) throw new NotFoundError('Script version');
+
+  return found;
 }
 
 /** Seed system presets into the database (idempotent) */

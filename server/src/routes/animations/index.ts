@@ -1,6 +1,9 @@
 import { FastifyInstance } from 'fastify';
+import { z } from 'zod';
 import { requireAuth } from '../../middleware/auth.js';
 import * as animationService from '../../services/animation-service.js';
+import { getAnimationRecommendations } from '../../services/ai-service.js';
+import * as integrationService from '../../services/integration-service.js';
 import { ValidationError } from '../../utils/errors.js';
 import {
   presetFiltersSchema,
@@ -114,5 +117,64 @@ export async function projectAnimationRoutes(app: FastifyInstance) {
       request.user.userId,
     );
     return reply.send({ data: result });
+  });
+
+  // GET /api/projects/:id/animations/script-history — Get script version history
+  app.get('/:id/animations/script-history', async (request, reply) => {
+    const params = projectIdSchema.safeParse(request.params);
+    if (!params.success) throw new ValidationError(params.error.flatten().fieldErrors);
+
+    const history = await animationService.getScriptHistory(
+      params.data.id,
+      request.user.userId,
+    );
+    return reply.send({ data: history });
+  });
+
+  // GET /api/projects/:id/animations/script-version/:version — Get specific script version
+  app.get('/:id/animations/script-version/:version', async (request, reply) => {
+    const params = projectIdSchema.safeParse(request.params);
+    if (!params.success) throw new ValidationError(params.error.flatten().fieldErrors);
+
+    const rawParams = request.params as Record<string, string>;
+    const versionParam = rawParams['version'] ?? '';
+    const version = parseInt(versionParam, 10);
+    if (isNaN(version)) throw new ValidationError({ version: ['Must be a number'] });
+
+    const result = await animationService.getScriptVersion(
+      params.data.id,
+      request.user.userId,
+      version,
+    );
+    return reply.send({ data: result });
+  });
+
+  // POST /api/animations/ai-recommend — Get AI-powered animation recommendations
+  const aiRecommendSchema = z.object({
+    siteStructure: z.string().min(1),
+    siteType: z.string().default('business'),
+  });
+
+  app.post('/animations/ai-recommend', async (request, reply) => {
+    const body = aiRecommendSchema.safeParse(request.body);
+    if (!body.success) throw new ValidationError(body.error.flatten().fieldErrors);
+
+    const anthropicKey = await integrationService.getAccessToken(request.user.userId, 'anthropic');
+    if (!anthropicKey) {
+      return reply.status(400).send({
+        error: {
+          code: 'MISSING_API_KEY',
+          message: 'Anthropic API key not configured. Go to Settings → Integrations to add it.',
+        },
+      });
+    }
+
+    const recommendations = await getAnimationRecommendations(
+      anthropicKey,
+      body.data.siteStructure,
+      body.data.siteType,
+    );
+
+    return reply.send({ data: recommendations });
   });
 }
