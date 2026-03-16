@@ -7,6 +7,8 @@ interface TreeNodeProps {
   depth: number;
   aiSuggestions?: Record<string, { suggestedClass?: string; notes?: string }>;
   onClassChange?: (nodeId: string, newClass: string) => void;
+  selectedNodeId?: string | null;
+  onNodeSelect?: (nodeId: string) => void;
 }
 
 const TYPE_COLORS: Record<string, string> = {
@@ -17,7 +19,7 @@ const TYPE_COLORS: Record<string, string> = {
   hr: 'var(--text-tertiary)',
 };
 
-export function TreeNode({ node, depth, aiSuggestions, onClassChange }: TreeNodeProps) {
+export function TreeNode({ node, depth, aiSuggestions, onClassChange, selectedNodeId, onNodeSelect }: TreeNodeProps) {
   const [expanded, setExpanded] = useState(depth < 2);
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(node.suggestedClass);
@@ -25,6 +27,7 @@ export function TreeNode({ node, depth, aiSuggestions, onClassChange }: TreeNode
   const hasChildren = node.children.length > 0;
   const aiSuggestion = aiSuggestions?.[node.id];
   const typeColor = TYPE_COLORS[node.type] ?? 'var(--text-tertiary)';
+  const isSelected = selectedNodeId === node.id;
 
   const handleDoubleClick = useCallback(() => {
     setEditing(true);
@@ -48,12 +51,15 @@ export function TreeNode({ node, depth, aiSuggestions, onClassChange }: TreeNode
           gap: 4,
           fontSize: 'var(--text-sm)',
           borderRadius: 'var(--radius-sm)',
+          backgroundColor: isSelected ? 'var(--accent-subtle)' : 'transparent',
+          cursor: 'pointer',
         }}
+        onClick={() => onNodeSelect?.(node.id)}
         onMouseEnter={(e) => {
-          e.currentTarget.style.backgroundColor = 'var(--surface-hover)';
+          if (!isSelected) e.currentTarget.style.backgroundColor = 'var(--surface-hover)';
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.backgroundColor = 'transparent';
+          if (!isSelected) e.currentTarget.style.backgroundColor = 'transparent';
         }}
       >
         {/* Expand/collapse toggle */}
@@ -176,6 +182,8 @@ export function TreeNode({ node, depth, aiSuggestions, onClassChange }: TreeNode
             depth={depth + 1}
             aiSuggestions={aiSuggestions}
             onClassChange={onClassChange}
+            selectedNodeId={selectedNodeId}
+            onNodeSelect={onNodeSelect}
           />
         ))}
     </div>

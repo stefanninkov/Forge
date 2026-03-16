@@ -5,10 +5,12 @@ interface StructureTreeProps {
   structure: ParsedNode;
   aiSuggestions?: Record<string, { suggestedClass?: string; notes?: string }>;
   onClassChange?: (nodeId: string, newClass: string) => void;
+  selectedNodeId?: string | null;
+  onNodeSelect?: (nodeId: string) => void;
   title: string;
 }
 
-export function StructureTree({ structure, aiSuggestions, onClassChange, title }: StructureTreeProps) {
+export function StructureTree({ structure, aiSuggestions, onClassChange, selectedNodeId, onNodeSelect, title }: StructureTreeProps) {
   const nodeCount = countNodes(structure);
 
   return (
@@ -54,6 +56,8 @@ export function StructureTree({ structure, aiSuggestions, onClassChange, title }
           depth={0}
           aiSuggestions={aiSuggestions}
           onClassChange={onClassChange}
+          selectedNodeId={selectedNodeId}
+          onNodeSelect={onNodeSelect}
         />
       </div>
     </div>

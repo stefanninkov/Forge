@@ -325,7 +325,7 @@ export function AnimationEditor({
           <span style={{ flex: 1 }}>
             Recommended: <strong>{recommendation.engine.toUpperCase()}</strong>
           </span>
-          <HelpTooltip content={recommendation.reason} size={12} />
+          <HelpTooltip text={recommendation.reason} size={12} />
         </div>
       )}
 
@@ -544,7 +544,7 @@ export function AnimationEditor({
               <div>
                 <label style={labelStyle}>
                   Start
-                  <HelpTooltip content="When the animation starts. Format: 'element viewport' (e.g., 'top 80%' means when element's top reaches 80% of viewport)." size={10} />
+                  <HelpTooltip text="When the animation starts. Format: 'element viewport' (e.g., 'top 80%' means when element's top reaches 80% of viewport)." size={10} />
                 </label>
                 <input
                   type="text"
@@ -556,7 +556,7 @@ export function AnimationEditor({
               <div>
                 <label style={labelStyle}>
                   End
-                  <HelpTooltip content="When the animation ends. Format: 'element viewport' (e.g., 'bottom 20%')." size={10} />
+                  <HelpTooltip text="When the animation ends. Format: 'element viewport' (e.g., 'bottom 20%')." size={10} />
                 </label>
                 <input
                   type="text"
@@ -577,7 +577,7 @@ export function AnimationEditor({
             <div>
               <label style={labelStyle}>
                 Stagger Delay
-                <HelpTooltip content="Delay between each child element's animation start. Creates a cascading effect." size={10} />
+                <HelpTooltip text="Delay between each child element's animation start. Creates a cascading effect." size={10} />
               </label>
               <SliderInput
                 value={config.stagger ?? 0}
@@ -591,7 +591,7 @@ export function AnimationEditor({
             <div>
               <label style={labelStyle}>
                 Text Split
-                <HelpTooltip content="Split text into individual characters, words, or lines for staggered animation." size={10} />
+                <HelpTooltip text="Split text into individual characters, words, or lines for staggered animation." size={10} />
               </label>
               <CompactSelect
                 value={config.splitType || ''}
@@ -756,7 +756,7 @@ function ToggleSwitch({ label, checked, onChange, tooltip }: ToggleSwitchProps) 
         />
       </div>
       <span>{label}</span>
-      {tooltip && <HelpTooltip content={tooltip} size={10} />}
+      {tooltip && <HelpTooltip text={tooltip} size={10} />}
     </label>
   );
 }

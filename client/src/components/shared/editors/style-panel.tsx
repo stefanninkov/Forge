@@ -83,7 +83,7 @@ type Breakpoint = 'desktop' | 'tablet-l' | 'tablet' | 'mobile-l' | 'mobile';
 
 export interface StylePanelProps {
   styles: CSSStyles;
-  baseSize?: number;
+  baseFontSize?: number;
   onStyleChange: (property: string, value: string) => void;
   onUndo?: () => void;
   onRedo?: () => void;
@@ -171,7 +171,7 @@ function parseValueUnit(str: string | undefined): { value: number; unit: CSSUnit
 
 export function StylePanel({
   styles,
-  baseSize = 16,
+  baseFontSize = 16,
   onStyleChange,
   onUndo,
   onRedo,
@@ -397,7 +397,7 @@ export function StylePanel({
                       ]}
                       onChange={(v) => onStyleChange('justifyContent', v)}
                     />
-                    <HelpTooltip content="Controls how children are distributed along the main axis." />
+                    <HelpTooltip text="Controls how children are distributed along the main axis." />
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                     <IconButtonGroup
@@ -410,15 +410,15 @@ export function StylePanel({
                       ]}
                       onChange={(v) => onStyleChange('alignItems', v)}
                     />
-                    <HelpTooltip content="How children are aligned on the cross axis — stretch, center, start, end." />
+                    <HelpTooltip text="How children are aligned on the cross axis — stretch, center, start, end." />
                   </div>
                   <UnitInput
                     label="Gap"
                     {...parseValueUnit(styles.gap)}
-                    units={['px', 'rem', '%']}
+                    allowedUnits={['px', 'rem', '%']}
                     min={0}
                     compact
-                    baseSize={baseSize}
+                    baseFontSize={baseFontSize}
                     onChange={handleValueUnit('gap')}
                   />
                 </>
@@ -430,17 +430,17 @@ export function StylePanel({
                     label="Columns"
                     value={styles.gridTemplateColumns || ''}
                     unit="none"
-                    units={['none']}
+                    allowedUnits={['none']}
                     compact
                     onChange={() => {}}
                   />
                   <UnitInput
                     label="Gap"
                     {...parseValueUnit(styles.gridGap || styles.gap)}
-                    units={['px', 'rem', '%']}
+                    allowedUnits={['px', 'rem', '%']}
                     min={0}
                     compact
-                    baseSize={baseSize}
+                    baseFontSize={baseFontSize}
                     onChange={handleValueUnit('gap')}
                   />
                 </>
@@ -453,15 +453,15 @@ export function StylePanel({
                   options={POSITION_OPTIONS}
                   onChange={(v) => onStyleChange('position', v)}
                 />
-                <HelpTooltip content="How the element is positioned. 'relative' for offset from normal flow, 'absolute' for positioned relative to parent." />
+                <HelpTooltip text="How the element is positioned. 'relative' for offset from normal flow, 'absolute' for positioned relative to parent." />
               </div>
 
               {isPositioned && (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-                  <UnitInput label="Top" {...parseValueUnit(styles.top)} compact baseSize={baseSize} onChange={handleValueUnit('top')} />
-                  <UnitInput label="Right" {...parseValueUnit(styles.right)} compact baseSize={baseSize} onChange={handleValueUnit('right')} />
-                  <UnitInput label="Bottom" {...parseValueUnit(styles.bottom)} compact baseSize={baseSize} onChange={handleValueUnit('bottom')} />
-                  <UnitInput label="Left" {...parseValueUnit(styles.left)} compact baseSize={baseSize} onChange={handleValueUnit('left')} />
+                  <UnitInput label="Top" {...parseValueUnit(styles.top)}baseFontSize={baseFontSize} onChange={handleValueUnit('top')} />
+                  <UnitInput label="Right" {...parseValueUnit(styles.right)}baseFontSize={baseFontSize} onChange={handleValueUnit('right')} />
+                  <UnitInput label="Bottom" {...parseValueUnit(styles.bottom)}baseFontSize={baseFontSize} onChange={handleValueUnit('bottom')} />
+                  <UnitInput label="Left" {...parseValueUnit(styles.left)}baseFontSize={baseFontSize} onChange={handleValueUnit('left')} />
                 </div>
               )}
 
@@ -476,7 +476,7 @@ export function StylePanel({
                   label="Z-Index"
                   value={parseInt(styles.zIndex || '0', 10)}
                   unit="none"
-                  units={['none']}
+                  allowedUnits={['none']}
                   step={1}
                   compact
                   onChange={(v) => onStyleChange('zIndex', String(v))}
@@ -487,12 +487,12 @@ export function StylePanel({
             {/* Sizing */}
             <PropertyGroup title="Sizing">
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-                <UnitInput label="Width" {...parseValueUnit(styles.width)} units={['px', 'rem', '%', 'vw', 'auto' as CSSUnit]} compact baseSize={baseSize} onChange={handleValueUnit('width')} />
-                <UnitInput label="Height" {...parseValueUnit(styles.height)} units={['px', 'rem', '%', 'vh', 'auto' as CSSUnit]} compact baseSize={baseSize} onChange={handleValueUnit('height')} />
-                <UnitInput label="Min W" {...parseValueUnit(styles.minWidth)} units={['px', 'rem', '%']} compact baseSize={baseSize} onChange={handleValueUnit('minWidth')} />
-                <UnitInput label="Max W" {...parseValueUnit(styles.maxWidth)} units={['px', 'rem', '%']} compact baseSize={baseSize} onChange={handleValueUnit('maxWidth')} />
-                <UnitInput label="Min H" {...parseValueUnit(styles.minHeight)} units={['px', 'rem', '%']} compact baseSize={baseSize} onChange={handleValueUnit('minHeight')} />
-                <UnitInput label="Max H" {...parseValueUnit(styles.maxHeight)} units={['px', 'rem', '%']} compact baseSize={baseSize} onChange={handleValueUnit('maxHeight')} />
+                <UnitInput label="Width" {...parseValueUnit(styles.width)} allowedUnits={['px', 'rem', '%', 'vw', 'auto' as CSSUnit]}baseFontSize={baseFontSize} onChange={handleValueUnit('width')} />
+                <UnitInput label="Height" {...parseValueUnit(styles.height)} allowedUnits={['px', 'rem', '%', 'vh', 'auto' as CSSUnit]}baseFontSize={baseFontSize} onChange={handleValueUnit('height')} />
+                <UnitInput label="Min W" {...parseValueUnit(styles.minWidth)} allowedUnits={['px', 'rem', '%']}baseFontSize={baseFontSize} onChange={handleValueUnit('minWidth')} />
+                <UnitInput label="Max W" {...parseValueUnit(styles.maxWidth)} allowedUnits={['px', 'rem', '%']}baseFontSize={baseFontSize} onChange={handleValueUnit('maxWidth')} />
+                <UnitInput label="Min H" {...parseValueUnit(styles.minHeight)} allowedUnits={['px', 'rem', '%']}baseFontSize={baseFontSize} onChange={handleValueUnit('minHeight')} />
+                <UnitInput label="Max H" {...parseValueUnit(styles.maxHeight)} allowedUnits={['px', 'rem', '%']}baseFontSize={baseFontSize} onChange={handleValueUnit('maxHeight')} />
               </div>
             </PropertyGroup>
 
@@ -516,15 +516,15 @@ export function StylePanel({
                   <UnitInput
                     {...parseValueUnit(styles.marginTop)}
                     compact
-                    baseSize={baseSize}
+                    baseFontSize={baseFontSize}
                     onChange={(v, u) => handleLinkedSpacing('margin', v, u)}
                   />
                 ) : (
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-                    <UnitInput label="Top" {...parseValueUnit(styles.marginTop)} compact baseSize={baseSize} onChange={handleValueUnit('marginTop')} />
-                    <UnitInput label="Right" {...parseValueUnit(styles.marginRight)} compact baseSize={baseSize} onChange={handleValueUnit('marginRight')} />
-                    <UnitInput label="Bottom" {...parseValueUnit(styles.marginBottom)} compact baseSize={baseSize} onChange={handleValueUnit('marginBottom')} />
-                    <UnitInput label="Left" {...parseValueUnit(styles.marginLeft)} compact baseSize={baseSize} onChange={handleValueUnit('marginLeft')} />
+                    <UnitInput label="Top" {...parseValueUnit(styles.marginTop)}baseFontSize={baseFontSize} onChange={handleValueUnit('marginTop')} />
+                    <UnitInput label="Right" {...parseValueUnit(styles.marginRight)}baseFontSize={baseFontSize} onChange={handleValueUnit('marginRight')} />
+                    <UnitInput label="Bottom" {...parseValueUnit(styles.marginBottom)}baseFontSize={baseFontSize} onChange={handleValueUnit('marginBottom')} />
+                    <UnitInput label="Left" {...parseValueUnit(styles.marginLeft)}baseFontSize={baseFontSize} onChange={handleValueUnit('marginLeft')} />
                   </div>
                 )}
               </div>
@@ -546,15 +546,15 @@ export function StylePanel({
                   <UnitInput
                     {...parseValueUnit(styles.paddingTop)}
                     compact
-                    baseSize={baseSize}
+                    baseFontSize={baseFontSize}
                     onChange={(v, u) => handleLinkedSpacing('padding', v, u)}
                   />
                 ) : (
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-                    <UnitInput label="Top" {...parseValueUnit(styles.paddingTop)} compact baseSize={baseSize} onChange={handleValueUnit('paddingTop')} />
-                    <UnitInput label="Right" {...parseValueUnit(styles.paddingRight)} compact baseSize={baseSize} onChange={handleValueUnit('paddingRight')} />
-                    <UnitInput label="Bottom" {...parseValueUnit(styles.paddingBottom)} compact baseSize={baseSize} onChange={handleValueUnit('paddingBottom')} />
-                    <UnitInput label="Left" {...parseValueUnit(styles.paddingLeft)} compact baseSize={baseSize} onChange={handleValueUnit('paddingLeft')} />
+                    <UnitInput label="Top" {...parseValueUnit(styles.paddingTop)}baseFontSize={baseFontSize} onChange={handleValueUnit('paddingTop')} />
+                    <UnitInput label="Right" {...parseValueUnit(styles.paddingRight)}baseFontSize={baseFontSize} onChange={handleValueUnit('paddingRight')} />
+                    <UnitInput label="Bottom" {...parseValueUnit(styles.paddingBottom)}baseFontSize={baseFontSize} onChange={handleValueUnit('paddingBottom')} />
+                    <UnitInput label="Left" {...parseValueUnit(styles.paddingLeft)}baseFontSize={baseFontSize} onChange={handleValueUnit('paddingLeft')} />
                   </div>
                 )}
               </div>
@@ -577,7 +577,7 @@ export function StylePanel({
                 onChange={(v) => onStyleChange('fontFamily', v)}
               />
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-                <UnitInput label="Size" {...parseValueUnit(styles.fontSize)} units={['px', 'rem', 'em']} compact baseSize={baseSize} onChange={handleValueUnit('fontSize')} />
+                <UnitInput label="Size" {...parseValueUnit(styles.fontSize)} allowedUnits={['px', 'rem', 'em']}baseFontSize={baseFontSize} onChange={handleValueUnit('fontSize')} />
                 <CompactSelect
                   label="Weight"
                   value={styles.fontWeight || '400'}
@@ -586,8 +586,8 @@ export function StylePanel({
                 />
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-                <UnitInput label="Line Height" {...parseValueUnit(styles.lineHeight)} units={['px', 'rem', 'none' as CSSUnit]} compact baseSize={baseSize} onChange={handleValueUnit('lineHeight')} />
-                <UnitInput label="Letter Spacing" {...parseValueUnit(styles.letterSpacing)} units={['px', 'em']} compact baseSize={baseSize} onChange={handleValueUnit('letterSpacing')} />
+                <UnitInput label="Line Height" {...parseValueUnit(styles.lineHeight)} allowedUnits={['px', 'rem', 'none' as CSSUnit]}baseFontSize={baseFontSize} onChange={handleValueUnit('lineHeight')} />
+                <UnitInput label="Letter Spacing" {...parseValueUnit(styles.letterSpacing)} allowedUnits={['px', 'em']}baseFontSize={baseFontSize} onChange={handleValueUnit('letterSpacing')} />
               </div>
               <IconButtonGroup
                 label="Text Align"
@@ -625,7 +625,7 @@ export function StylePanel({
             {/* Borders */}
             <PropertyGroup title="Borders">
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-                <UnitInput label="Width" {...parseValueUnit(styles.borderWidth)} units={['px']} compact min={0} onChange={handleValueUnit('borderWidth')} />
+                <UnitInput label="Width" {...parseValueUnit(styles.borderWidth)} allowedUnits={['px']}min={0} onChange={handleValueUnit('borderWidth')} />
                 <CompactSelect
                   label="Style"
                   value={styles.borderStyle || 'none'}
@@ -643,7 +643,7 @@ export function StylePanel({
                   <span style={{ fontSize: 'var(--text-xs)', fontWeight: 500, color: 'var(--text-tertiary)' }}>
                     Border Radius
                   </span>
-                  <HelpTooltip content="Rounds the corners of the element. Use one value for all corners or four for individual corners." />
+                  <HelpTooltip text="Rounds the corners of the element. Use one value for all corners or four for individual corners." />
                   <button
                     onClick={() => setBorderRadiusLinked(!borderRadiusLinked)}
                     style={{
@@ -656,10 +656,10 @@ export function StylePanel({
                 </div>
                 <UnitInput
                   {...parseValueUnit(styles.borderRadius)}
-                  units={['px', 'rem', '%']}
+                  allowedUnits={['px', 'rem', '%']}
                   compact
                   min={0}
-                  baseSize={baseSize}
+                  baseFontSize={baseFontSize}
                   onChange={handleValueUnit('borderRadius')}
                 />
               </div>
@@ -672,7 +672,7 @@ export function StylePanel({
                   <span style={{ fontSize: 'var(--text-xs)', fontWeight: 500, color: 'var(--text-tertiary)' }}>
                     Opacity
                   </span>
-                  <HelpTooltip content="Controls transparency. 1 = fully visible, 0 = fully invisible. Affects the entire element including children." />
+                  <HelpTooltip text="Controls transparency. 1 = fully visible, 0 = fully invisible. Affects the entire element including children." />
                 </div>
                 <input
                   type="range"

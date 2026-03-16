@@ -3,31 +3,29 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 export type CSSUnit = 'px' | 'rem' | 'em' | '%' | 'vw' | 'vh' | 'auto' | 'none' | 's' | 'ms';
 
 export interface UnitInputProps {
-  value: number | string;
+  value: number;
   unit: CSSUnit;
-  units?: CSSUnit[];
+  onChange: (value: number, unit: CSSUnit) => void;
   label?: string;
   min?: number;
   max?: number;
   step?: number;
-  baseSize?: number;
+  baseFontSize?: number;
+  allowedUnits?: CSSUnit[];
   disabled?: boolean;
-  compact?: boolean;
-  onChange: (value: number | string, unit: CSSUnit) => void;
 }
 
 export function UnitInput({
   value,
   unit,
-  units = ['px', 'rem', 'em'],
+  onChange,
   label,
   min,
   max,
   step = 1,
-  baseSize = 16,
+  baseFontSize = 16,
+  allowedUnits = ['px', 'rem', 'em'],
   disabled = false,
-  compact = false,
-  onChange,
 }: UnitInputProps) {
   const [localValue, setLocalValue] = useState(String(value));
   const [unitOpen, setUnitOpen] = useState(false);
@@ -56,16 +54,16 @@ export function UnitInput({
 
     // Convert to px first
     let px = val;
-    if (fromUnit === 'rem') px = val * baseSize;
-    else if (fromUnit === 'em') px = val * baseSize;
+    if (fromUnit === 'rem') px = val * baseFontSize;
+    else if (fromUnit === 'em') px = val * baseFontSize;
 
     // Convert from px to target
     if (toUnit === 'px') return Math.round(px * 100) / 100;
-    if (toUnit === 'rem') return Math.round((px / baseSize) * 1000) / 1000;
-    if (toUnit === 'em') return Math.round((px / baseSize) * 1000) / 1000;
+    if (toUnit === 'rem') return Math.round((px / baseFontSize) * 1000) / 1000;
+    if (toUnit === 'em') return Math.round((px / baseFontSize) * 1000) / 1000;
 
     return val;
-  }, [baseSize]);
+  }, [baseFontSize]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setLocalValue(e.target.value);
@@ -127,7 +125,7 @@ export function UnitInput({
     }
   };
 
-  const height = compact ? 28 : 36;
+  const height = 32;
 
   return (
     <div style={{ position: 'relative' }}>
@@ -150,7 +148,7 @@ export function UnitInput({
           display: 'flex',
           height,
           border: '1px solid var(--border-default)',
-          borderRadius: compact ? 4 : 6,
+          borderRadius: 6,
           overflow: 'hidden',
           opacity: disabled ? 0.5 : 1,
         }}
@@ -171,14 +169,14 @@ export function UnitInput({
             padding: '0 8px',
             border: 'none',
             outline: 'none',
-            fontSize: compact ? 'var(--text-sm)' : 'var(--text-base)',
+            fontSize: 'var(--text-sm)',
             fontFamily: 'var(--font-mono)',
             color: 'var(--text-primary)',
             backgroundColor: 'transparent',
             textAlign: 'right',
           }}
         />
-        {units.length > 1 ? (
+        {allowedUnits.length > 1 ? (
           <div ref={dropdownRef} style={{ position: 'relative' }}>
             <button
               onClick={() => !disabled && setUnitOpen(!unitOpen)}
@@ -228,7 +226,7 @@ export function UnitInput({
                   overflow: 'hidden',
                 }}
               >
-                {units.map((u) => (
+                {allowedUnits.map((u) => (
                   <button
                     key={u}
                     onClick={() => handleUnitChange(u)}

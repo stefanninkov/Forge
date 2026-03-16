@@ -67,7 +67,7 @@ function BreakpointCard({
           <div key={key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)' }}>{label}</span>
-              <HelpTooltip content={tooltip} size={10} />
+              <HelpTooltip text={tooltip} size={10} />
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               <input

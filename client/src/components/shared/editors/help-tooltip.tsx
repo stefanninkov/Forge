@@ -2,14 +2,14 @@ import { useState, useRef, useEffect } from 'react';
 import { HelpCircle } from 'lucide-react';
 
 export interface HelpTooltipProps {
-  content: string;
+  text: string;
   guideLink?: string;
   position?: 'top' | 'right' | 'bottom' | 'left';
   size?: number;
 }
 
 export function HelpTooltip({
-  content,
+  text,
   guideLink,
   position = 'top',
   size = 12,
@@ -124,7 +124,7 @@ export function HelpTooltip({
               ...arrowStyles[position],
             }}
           />
-          <span>{content}</span>
+          <span>{text}</span>
           {guideLink && (
             <a
               href={guideLink}

@@ -35,3 +35,6 @@ export type {
 
 export { ScalingConfigEditor } from './scaling-config';
 export type { ScalingConfigEditorProps } from './scaling-config';
+
+export { StructureTree } from './structure-tree';
+export type { StructureTreeProps, TreeNode } from './structure-tree';

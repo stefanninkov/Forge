@@ -5,23 +5,92 @@ import type { Prisma } from '@prisma/client';
 
 // ── Types ──
 
+interface FigmaColor {
+  r: number;
+  g: number;
+  b: number;
+  a: number;
+}
+
 interface FigmaNode {
   id: string;
   name: string;
   type: string;
   children?: FigmaNode[];
+  // Layout
   layoutMode?: string;
   primaryAxisAlignItems?: string;
   counterAxisAlignItems?: string;
+  layoutAlign?: string;
+  layoutGrow?: number;
+  layoutWrap?: string;
   paddingTop?: number;
   paddingRight?: number;
   paddingBottom?: number;
   paddingLeft?: number;
   itemSpacing?: number;
-  fills?: Array<{ type: string; color?: { r: number; g: number; b: number; a: number } }>;
-  characters?: string;
-  style?: Record<string, unknown>;
+  counterAxisSpacing?: number;
+  // Size
   absoluteBoundingBox?: { x: number; y: number; width: number; height: number };
+  constraints?: { horizontal: string; vertical: string };
+  minWidth?: number;
+  maxWidth?: number;
+  minHeight?: number;
+  maxHeight?: number;
+  // Fills & Strokes
+  fills?: Array<{
+    type: string;
+    visible?: boolean;
+    color?: FigmaColor;
+    opacity?: number;
+    gradientStops?: Array<{ color: FigmaColor; position: number }>;
+    gradientHandlePositions?: Array<{ x: number; y: number }>;
+    imageRef?: string;
+    scaleMode?: string;
+  }>;
+  strokes?: Array<{ type: string; color?: FigmaColor; opacity?: number }>;
+  strokeWeight?: number;
+  strokeAlign?: string;
+  individualStrokeWeights?: { top: number; right: number; bottom: number; left: number };
+  // Corner radius
+  cornerRadius?: number;
+  rectangleCornerRadii?: [number, number, number, number];
+  // Effects (shadows, blurs)
+  effects?: Array<{
+    type: string;
+    visible?: boolean;
+    color?: FigmaColor;
+    offset?: { x: number; y: number };
+    radius?: number;
+    spread?: number;
+  }>;
+  // Typography
+  characters?: string;
+  style?: {
+    fontFamily?: string;
+    fontPostScriptName?: string;
+    fontWeight?: number;
+    fontSize?: number;
+    textAlignHorizontal?: string;
+    textAlignVertical?: string;
+    letterSpacing?: number;
+    lineHeightPx?: number;
+    lineHeightPercent?: number;
+    lineHeightUnit?: string;
+    textDecoration?: string;
+    textCase?: string;
+    italic?: boolean;
+    [key: string]: unknown;
+  };
+  // Opacity & blend
+  opacity?: number;
+  blendMode?: string;
+  // Visibility & clipping
+  visible?: boolean;
+  clipsContent?: boolean;
+  // Component info
+  componentId?: string;
+  componentProperties?: Record<string, unknown>;
 }
 
 interface ParsedNode {
@@ -124,26 +193,239 @@ function mapFigmaType(figmaType: string): string {
   return typeMap[figmaType] ?? 'div';
 }
 
+function figmaColorToRgba(color: FigmaColor, opacity?: number): string {
+  const r = Math.round(color.r * 255);
+  const g = Math.round(color.g * 255);
+  const b = Math.round(color.b * 255);
+  const a = opacity ?? color.a ?? 1;
+  if (a >= 1) return `rgb(${r}, ${g}, ${b})`;
+  return `rgba(${r}, ${g}, ${b}, ${a.toFixed(2)})`;
+}
+
+function figmaColorToHex(color: FigmaColor): string {
+  const r = Math.round(color.r * 255).toString(16).padStart(2, '0');
+  const g = Math.round(color.g * 255).toString(16).padStart(2, '0');
+  const b = Math.round(color.b * 255).toString(16).padStart(2, '0');
+  return `#${r}${g}${b}`;
+}
+
+function mapAlignItems(figmaAlign: string): string {
+  const map: Record<string, string> = {
+    MIN: 'flex-start',
+    CENTER: 'center',
+    MAX: 'flex-end',
+    BASELINE: 'baseline',
+    SPACE_BETWEEN: 'space-between',
+  };
+  return map[figmaAlign] ?? figmaAlign.toLowerCase();
+}
+
 function parseFigmaNode(node: FigmaNode, depth = 0): ParsedNode {
   const properties: Record<string, unknown> = {};
+  const styles: Record<string, string> = {};
 
+  // ── Layout ──
   if (node.layoutMode) {
+    styles.display = 'flex';
+    styles.flexDirection = node.layoutMode === 'HORIZONTAL' ? 'row' : 'column';
     properties.display = 'flex';
-    properties.flexDirection = node.layoutMode === 'HORIZONTAL' ? 'row' : 'column';
+    properties.flexDirection = styles.flexDirection;
   }
-  if (node.primaryAxisAlignItems) properties.justifyContent = node.primaryAxisAlignItems;
-  if (node.counterAxisAlignItems) properties.alignItems = node.counterAxisAlignItems;
-  if (node.itemSpacing) properties.gap = `${node.itemSpacing}px`;
+  if (node.primaryAxisAlignItems) {
+    const mapped = mapAlignItems(node.primaryAxisAlignItems);
+    styles.justifyContent = mapped;
+    properties.justifyContent = mapped;
+  }
+  if (node.counterAxisAlignItems) {
+    const mapped = mapAlignItems(node.counterAxisAlignItems);
+    styles.alignItems = mapped;
+    properties.alignItems = mapped;
+  }
+  if (node.layoutWrap === 'WRAP') {
+    styles.flexWrap = 'wrap';
+  }
+  if (node.layoutGrow === 1) {
+    styles.flexGrow = '1';
+  }
+  if (node.itemSpacing) {
+    styles.gap = `${node.itemSpacing}px`;
+    properties.gap = `${node.itemSpacing}px`;
+  }
+  if (node.counterAxisSpacing) {
+    styles.rowGap = `${node.counterAxisSpacing}px`;
+  }
   if (node.paddingTop || node.paddingRight || node.paddingBottom || node.paddingLeft) {
-    properties.padding = `${node.paddingTop ?? 0}px ${node.paddingRight ?? 0}px ${node.paddingBottom ?? 0}px ${node.paddingLeft ?? 0}px`;
+    const pt = node.paddingTop ?? 0;
+    const pr = node.paddingRight ?? 0;
+    const pb = node.paddingBottom ?? 0;
+    const pl = node.paddingLeft ?? 0;
+    styles.padding = `${pt}px ${pr}px ${pb}px ${pl}px`;
+    properties.padding = styles.padding;
   }
+
+  // ── Dimensions ──
   if (node.absoluteBoundingBox) {
     properties.width = node.absoluteBoundingBox.width;
     properties.height = node.absoluteBoundingBox.height;
+    styles.width = `${node.absoluteBoundingBox.width}px`;
+    styles.height = `${node.absoluteBoundingBox.height}px`;
   }
+  if (node.minWidth) styles.minWidth = `${node.minWidth}px`;
+  if (node.maxWidth) styles.maxWidth = `${node.maxWidth}px`;
+  if (node.minHeight) styles.minHeight = `${node.minHeight}px`;
+  if (node.maxHeight) styles.maxHeight = `${node.maxHeight}px`;
+
+  // ── Background / Fills ──
+  const visibleFills = (node.fills ?? []).filter((f) => f.visible !== false);
+  const firstFill = visibleFills[0];
+  if (firstFill) {
+    if (firstFill.type === 'SOLID' && firstFill.color) {
+      const color = figmaColorToRgba(firstFill.color, firstFill.opacity);
+      styles.backgroundColor = color;
+      properties.backgroundColor = color;
+      properties.backgroundColorHex = figmaColorToHex(firstFill.color);
+    } else if (firstFill.type === 'GRADIENT_LINEAR' && firstFill.gradientStops) {
+      const stops = firstFill.gradientStops
+        .map((s) => `${figmaColorToRgba(s.color)} ${Math.round(s.position * 100)}%`)
+        .join(', ');
+      styles.background = `linear-gradient(${stops})`;
+      properties.background = styles.background;
+    } else if (firstFill.type === 'IMAGE') {
+      properties.backgroundImage = true;
+      properties.backgroundSize = firstFill.scaleMode === 'FILL' ? 'cover' : firstFill.scaleMode === 'FIT' ? 'contain' : 'cover';
+      styles.backgroundSize = properties.backgroundSize as string;
+    }
+  }
+
+  // ── Border / Strokes ──
+  const visibleStrokes = (node.strokes ?? []).filter((s) => s.color);
+  const firstStroke = visibleStrokes[0];
+  if (firstStroke && firstStroke.color && node.strokeWeight) {
+    const color = figmaColorToRgba(firstStroke.color, firstStroke.opacity);
+    const weight = node.strokeWeight;
+    styles.border = `${weight}px solid ${color}`;
+    properties.borderWidth = weight;
+    properties.borderColor = color;
+    properties.borderColorHex = figmaColorToHex(firstStroke.color);
+  }
+  if (node.individualStrokeWeights) {
+    const sw = node.individualStrokeWeights;
+    properties.borderTopWidth = sw.top;
+    properties.borderRightWidth = sw.right;
+    properties.borderBottomWidth = sw.bottom;
+    properties.borderLeftWidth = sw.left;
+  }
+
+  // ── Corner Radius ──
+  if (node.rectangleCornerRadii) {
+    const [tl, tr, br, bl] = node.rectangleCornerRadii;
+    if (tl === tr && tr === br && br === bl) {
+      styles.borderRadius = `${tl}px`;
+    } else {
+      styles.borderRadius = `${tl}px ${tr}px ${br}px ${bl}px`;
+    }
+    properties.borderRadius = styles.borderRadius;
+  } else if (node.cornerRadius) {
+    styles.borderRadius = `${node.cornerRadius}px`;
+    properties.borderRadius = styles.borderRadius;
+  }
+
+  // ── Effects (Shadows, Blurs) ──
+  const visibleEffects = (node.effects ?? []).filter((e) => e.visible !== false);
+  const shadows = visibleEffects.filter((e) => e.type === 'DROP_SHADOW' || e.type === 'INNER_SHADOW');
+  if (shadows.length > 0) {
+    const shadowStr = shadows.map((s) => {
+      const x = s.offset?.x ?? 0;
+      const y = s.offset?.y ?? 0;
+      const blur = s.radius ?? 0;
+      const spread = s.spread ?? 0;
+      const color = s.color ? figmaColorToRgba(s.color) : 'rgba(0,0,0,0.25)';
+      const inset = s.type === 'INNER_SHADOW' ? 'inset ' : '';
+      return `${inset}${x}px ${y}px ${blur}px ${spread}px ${color}`;
+    }).join(', ');
+    styles.boxShadow = shadowStr;
+    properties.boxShadow = shadowStr;
+  }
+  const firstBlur = visibleEffects.find((e) => e.type === 'LAYER_BLUR');
+  if (firstBlur && firstBlur.radius) {
+    styles.filter = `blur(${firstBlur.radius}px)`;
+    properties.blur = firstBlur.radius;
+  }
+  const firstBgBlur = visibleEffects.find((e) => e.type === 'BACKGROUND_BLUR');
+  if (firstBgBlur && firstBgBlur.radius) {
+    styles.backdropFilter = `blur(${firstBgBlur.radius}px)`;
+    properties.backdropBlur = firstBgBlur.radius;
+  }
+
+  // ── Typography ──
+  if (node.style) {
+    const ts = node.style;
+    if (ts.fontFamily) {
+      styles.fontFamily = ts.fontFamily;
+      properties.fontFamily = ts.fontFamily;
+    }
+    if (ts.fontSize) {
+      styles.fontSize = `${ts.fontSize}px`;
+      properties.fontSize = ts.fontSize;
+    }
+    if (ts.fontWeight) {
+      styles.fontWeight = `${ts.fontWeight}`;
+      properties.fontWeight = ts.fontWeight;
+    }
+    if (ts.italic) {
+      styles.fontStyle = 'italic';
+    }
+    if (ts.letterSpacing) {
+      styles.letterSpacing = `${ts.letterSpacing}px`;
+      properties.letterSpacing = ts.letterSpacing;
+    }
+    if (ts.lineHeightPx) {
+      styles.lineHeight = `${ts.lineHeightPx}px`;
+      properties.lineHeight = ts.lineHeightPx;
+    }
+    if (ts.textAlignHorizontal) {
+      const alignMap: Record<string, string> = { LEFT: 'left', CENTER: 'center', RIGHT: 'right', JUSTIFIED: 'justify' };
+      styles.textAlign = alignMap[ts.textAlignHorizontal] ?? 'left';
+    }
+    if (ts.textDecoration === 'UNDERLINE') {
+      styles.textDecoration = 'underline';
+    } else if (ts.textDecoration === 'STRIKETHROUGH') {
+      styles.textDecoration = 'line-through';
+    }
+    if (ts.textCase === 'UPPER') {
+      styles.textTransform = 'uppercase';
+    } else if (ts.textCase === 'LOWER') {
+      styles.textTransform = 'lowercase';
+    } else if (ts.textCase === 'TITLE') {
+      styles.textTransform = 'capitalize';
+    }
+  }
+
+  // Text node color (from fills, since Figma uses fills for text color)
+  if (node.type === 'TEXT' && firstFill && firstFill.type === 'SOLID' && firstFill.color) {
+    styles.color = figmaColorToRgba(firstFill.color, firstFill.opacity);
+    properties.color = styles.color;
+    properties.colorHex = figmaColorToHex(firstFill.color);
+  }
+
   if (node.characters) {
     properties.text = node.characters;
   }
+
+  // ── Opacity ──
+  if (node.opacity !== undefined && node.opacity < 1) {
+    styles.opacity = `${node.opacity}`;
+    properties.opacity = node.opacity;
+  }
+
+  // ── Overflow ──
+  if (node.clipsContent) {
+    styles.overflow = 'hidden';
+    properties.overflow = 'hidden';
+  }
+
+  // Store computed styles for preview rendering
+  properties._styles = styles;
 
   return {
     id: node.id,
@@ -340,6 +622,10 @@ export async function analyzeFigmaFile(
       auditResults: auditResults as unknown as Prisma.InputJsonValue,
     },
   });
+
+  prisma.activityLog.create({
+    data: { userId, projectId, action: 'FIGMA_ANALYZED', details: { fileKey } },
+  }).catch(() => {});
 
   return {
     id: analysis.id,
