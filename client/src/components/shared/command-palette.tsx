@@ -3,11 +3,53 @@ import { useNavigate } from 'react-router-dom';
 import {
   Search, LayoutDashboard, Settings, Wrench, Figma, LayoutTemplate,
   Sparkles, Gauge, SearchCheck, Brain, Zap, Plus, Moon, Sun, PanelLeftClose,
-  PanelLeft, Keyboard, Activity, FileText, HeartPulse, Clock,
+  PanelLeft, Keyboard, Activity, FileText, HeartPulse, Clock, BookOpen,
+  Users, Globe,
 } from 'lucide-react';
 import { useTheme } from '@/hooks/use-theme';
 import { useSidebar } from '@/hooks/use-sidebar';
 import { useRecentPages } from '@/hooks/use-recent-pages';
+
+/**
+ * Fuzzy match: checks if all characters of the pattern appear in the target
+ * in order (not necessarily contiguous). Returns a score (lower = better match)
+ * or -1 if no match. Consecutive character matches and matches at word
+ * boundaries are scored higher (lower number).
+ */
+function fuzzyMatch(pattern: string, target: string): number {
+  const p = pattern.toLowerCase();
+  const t = target.toLowerCase();
+
+  if (p.length === 0) return 0;
+  if (p.length > t.length) return -1;
+
+  // Fast path: exact substring match
+  if (t.includes(p)) return 0;
+
+  let score = 0;
+  let pi = 0;
+  let lastMatchIndex = -1;
+
+  for (let ti = 0; ti < t.length && pi < p.length; ti++) {
+    if (t[ti] === p[pi]) {
+      // Bonus for consecutive matches
+      if (lastMatchIndex === ti - 1) {
+        score += 1;
+      } else {
+        score += 5;
+      }
+      // Bonus for word boundary matches (after space, hyphen, slash)
+      if (ti === 0 || t[ti - 1] === ' ' || t[ti - 1] === '-' || t[ti - 1] === '/') {
+        score -= 3;
+      }
+      lastMatchIndex = ti;
+      pi++;
+    }
+  }
+
+  // All pattern characters matched?
+  return pi === p.length ? score : -1;
+}
 
 interface CommandItem {
   id: string;
@@ -49,6 +91,9 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
       { id: 'nav-activity', label: 'Go to Activity', icon: Activity, category: 'navigation', action: nav('/activity') },
       { id: 'nav-reports', label: 'Go to Reports', icon: FileText, category: 'navigation', action: nav('/reports') },
       { id: 'nav-settings', label: 'Go to Settings', icon: Settings, category: 'navigation', shortcut: '⌘,', action: nav('/settings') },
+      { id: 'nav-guide', label: 'Go to Guide', icon: BookOpen, category: 'navigation', action: nav('/guide') },
+      { id: 'nav-teams', label: 'Go to Teams', icon: Users, category: 'navigation', action: nav('/teams') },
+      { id: 'nav-community', label: 'Go to Community Library', icon: Globe, category: 'navigation', action: nav('/community') },
       // Actions
       { id: 'act-new-project', label: 'Create New Project', icon: Plus, category: 'actions', shortcut: '⌘N', action: () => { navigate('/'); onClose(); } },
       {
@@ -80,13 +125,24 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
 
   const filtered = useMemo(() => {
     if (!query.trim()) return [...recentItems, ...commands];
-    const q = query.toLowerCase();
-    return commands.filter(
-      (c) =>
-        c.label.toLowerCase().includes(q) ||
-        c.description?.toLowerCase().includes(q) ||
-        c.category.includes(q),
-    );
+    const q = query.trim();
+
+    const scored = commands
+      .map((cmd) => {
+        // Try matching against label, description, and category
+        const labelScore = fuzzyMatch(q, cmd.label);
+        const descScore = cmd.description ? fuzzyMatch(q, cmd.description) : -1;
+        const catScore = fuzzyMatch(q, cmd.category);
+        // Take the best (lowest non-negative) score
+        const scores = [labelScore, descScore, catScore].filter((s) => s >= 0);
+        const bestScore = scores.length > 0 ? Math.min(...scores) : -1;
+        return { cmd, score: bestScore };
+      })
+      .filter((entry) => entry.score >= 0)
+      .sort((a, b) => a.score - b.score)
+      .map((entry) => entry.cmd);
+
+    return scored;
   }, [commands, recentItems, query]);
 
   const grouped = useMemo(() => {
