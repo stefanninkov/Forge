@@ -2,8 +2,9 @@ import { useState, useMemo } from 'react';
 import {
   Activity, FolderPlus, Pencil, Trash2, Zap, LayoutTemplate,
   ArrowUpFromLine, Sparkles, Code2, Scissors, Eye, Settings2,
-  ChevronDown, Filter,
+  ChevronDown, Filter, Search, Copy,
 } from 'lucide-react';
+import { SkeletonActivityPage } from '@/components/shared/skeleton';
 import { PageHeader } from '@/components/layout/page-header';
 import { usePageTitle } from '@/hooks/use-page-title';
 import { useActivityLog } from '@/hooks/use-activity';
@@ -21,6 +22,7 @@ const ACTION_CONFIG: Record<ActivityAction, { label: string; icon: typeof Activi
   SECTION_CAPTURED: { label: 'Section captured', icon: Scissors, color: '#ec4899' },
   FIGMA_ANALYZED: { label: 'Figma analyzed', icon: Eye, color: '#06b6d4' },
   SETTINGS_UPDATED: { label: 'Settings updated', icon: Settings2, color: 'var(--text-secondary)' },
+  PROJECT_DUPLICATED: { label: 'Project duplicated', icon: Copy, color: 'var(--accent)' },
 };
 
 const FILTER_OPTIONS: { label: string; value: ActivityAction | '' }[] = [
@@ -162,27 +164,7 @@ export default function ActivityPage() {
         }}
       >
         {/* Loading */}
-        {isLoading && (
-          <div
-            className="flex items-center justify-center"
-            style={{
-              height: 300,
-              opacity: 0,
-              animation: 'fadeIn 200ms ease-out 200ms forwards',
-            }}
-          >
-            <div
-              style={{
-                width: 20,
-                height: 20,
-                border: '2px solid var(--border-default)',
-                borderTopColor: 'var(--accent)',
-                borderRadius: '50%',
-                animation: 'spin 1s linear infinite',
-              }}
-            />
-          </div>
-        )}
+        {isLoading && <SkeletonActivityPage />}
 
         {/* Error */}
         {error && (
@@ -303,17 +285,32 @@ export default function ActivityPage() {
                           >
                             {config?.label ?? item.action}
                           </p>
-                          {item.project && (
-                            <p
-                              style={{
-                                fontSize: 'var(--text-xs)',
-                                color: 'var(--text-tertiary)',
-                                margin: '2px 0 0',
-                              }}
-                            >
-                              {item.project.name}
-                            </p>
-                          )}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
+                            {item.project && (
+                              <span
+                                style={{
+                                  fontSize: 'var(--text-xs)',
+                                  color: 'var(--text-tertiary)',
+                                }}
+                              >
+                                {item.project.name}
+                              </span>
+                            )}
+                            {item.details && typeof item.details === 'object' && (
+                              <span
+                                style={{
+                                  fontSize: 'var(--text-xs)',
+                                  color: 'var(--text-tertiary)',
+                                  fontFamily: 'var(--font-mono)',
+                                }}
+                              >
+                                {Object.entries(item.details as Record<string, unknown>)
+                                  .filter(([, v]) => typeof v === 'string' || typeof v === 'number')
+                                  .map(([k, v]) => `${k}: ${v}`)
+                                  .join(' · ')}
+                              </span>
+                            )}
+                          </div>
                         </div>
 
                         <span

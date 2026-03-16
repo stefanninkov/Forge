@@ -11,6 +11,15 @@ import {
   useDisconnectIntegration,
 } from '@/hooks/use-integrations';
 import {
+  useNotificationPreferences,
+  useUpdateNotificationPreferences,
+} from '@/hooks/use-notification-preferences';
+import { useScalingSystem } from '@/hooks/use-scaling-system';
+import { ScalingConfigEditor } from '@/components/shared/editors/scaling-config';
+import { KeyboardShortcutsPanel } from '@/components/shared/keyboard-shortcuts-panel';
+import { DEFAULT_SCALING_CONFIG } from '@/lib/scaling-system';
+import type { ScalingConfig as ScalingConfigType } from '@/lib/scaling-system';
+import {
   Layers, Brain, Globe, Check, X, Loader2, User, Plug,
   Palette, Bell, Ruler, Keyboard, Database, Moon, Sun, Monitor,
   Download, Trash2, ChevronDown, RotateCcw,
@@ -639,6 +648,9 @@ function AppearanceSection() {
 
 /* ─── Notifications Section ─── */
 function NotificationsSection() {
+  const { data: prefs } = useNotificationPreferences();
+  const updatePrefs = useUpdateNotificationPreferences();
+
   const notificationEvents = [
     { event: 'audit_complete', label: 'Audit completed', description: 'When a speed, SEO, or AEO audit finishes running.' },
     { event: 'score_drop', label: 'Score drop alert', description: 'When a page score drops below a threshold.' },
@@ -646,6 +658,23 @@ function NotificationsSection() {
     { event: 'template_shared', label: 'Template shared', description: 'When someone shares a template with you.' },
     { event: 'weekly_summary', label: 'Weekly summary', description: 'Weekly digest of project activity and scores.' },
   ];
+
+  function getPrefValue(event: string, channel: 'email' | 'in_app'): boolean {
+    const pref = prefs?.find((p) => p.event === event && p.channel === channel);
+    if (pref) return pref.enabled;
+    return channel === 'in_app'; // Default: in-app on, email off
+  }
+
+  function handleToggle(event: string, channel: 'email' | 'in_app', enabled: boolean) {
+    const updated = [...(prefs ?? [])];
+    const idx = updated.findIndex((p) => p.event === event && p.channel === channel);
+    if (idx >= 0) {
+      updated[idx] = { ...updated[idx], enabled };
+    } else {
+      updated.push({ event, channel, enabled });
+    }
+    updatePrefs.mutate(updated);
+  }
 
   return (
     <div className="flex flex-col" style={{ gap: 24 }}>
@@ -664,7 +693,15 @@ function NotificationsSection() {
           <div style={{ padding: '8px 16px', fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'center' }}>Email</div>
 
           {notificationEvents.map((n) => (
-            <NotificationRow key={n.event} label={n.label} description={n.description} />
+            <NotificationRow
+              key={n.event}
+              label={n.label}
+              description={n.description}
+              inApp={getPrefValue(n.event, 'in_app')}
+              email={getPrefValue(n.event, 'email')}
+              onToggleInApp={(v) => handleToggle(n.event, 'in_app', v)}
+              onToggleEmail={(v) => handleToggle(n.event, 'email', v)}
+            />
           ))}
         </div>
       </div>
@@ -672,10 +709,14 @@ function NotificationsSection() {
   );
 }
 
-function NotificationRow({ label, description }: { label: string; description: string }) {
-  const [inApp, setInApp] = useState(true);
-  const [email, setEmail] = useState(false);
-
+function NotificationRow({ label, description, inApp, email, onToggleInApp, onToggleEmail }: {
+  label: string;
+  description: string;
+  inApp: boolean;
+  email: boolean;
+  onToggleInApp: (v: boolean) => void;
+  onToggleEmail: (v: boolean) => void;
+}) {
   return (
     <>
       <div style={{ padding: '10px 0', borderTop: '1px solid var(--border-subtle)' }}>
@@ -683,10 +724,10 @@ function NotificationRow({ label, description }: { label: string; description: s
         <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)', marginTop: 2 }}>{description}</div>
       </div>
       <div style={{ padding: '10px 16px', borderTop: '1px solid var(--border-subtle)', textAlign: 'center' }}>
-        <SmallToggle checked={inApp} onChange={setInApp} />
+        <SmallToggle checked={inApp} onChange={onToggleInApp} />
       </div>
       <div style={{ padding: '10px 16px', borderTop: '1px solid var(--border-subtle)', textAlign: 'center' }}>
-        <SmallToggle checked={email} onChange={setEmail} />
+        <SmallToggle checked={email} onChange={onToggleEmail} />
       </div>
     </>
   );
@@ -694,51 +735,123 @@ function NotificationRow({ label, description }: { label: string; description: s
 
 /* ─── Scaling Section ─── */
 function ScalingSection() {
+  const { config, updateConfig, isUpdating } = useScalingSystem();
+  const [defaultUnit, setDefaultUnit] = useState<'px' | 'rem' | 'em'>('px');
+  const [isEditing, setIsEditing] = useState(false);
+
+  const handleConfigChange = (newConfig: ScalingConfigType) => {
+    updateConfig({
+      baseFontSize: newConfig.desktop.baseFontSize,
+      breakpoints: [
+        { label: 'Desktop', base: newConfig.desktop.baseFontSize, min: newConfig.desktop.minWidth, max: newConfig.desktop.maxWidth },
+        { label: 'Tablet', base: newConfig.tablet.baseFontSize, min: newConfig.tablet.minWidth, max: newConfig.tablet.maxWidth },
+        { label: 'Mobile L', base: newConfig.mobileLandscape.baseFontSize, min: newConfig.mobileLandscape.minWidth, max: newConfig.mobileLandscape.maxWidth },
+        { label: 'Mobile P', base: newConfig.mobilePortrait.baseFontSize, min: newConfig.mobilePortrait.minWidth, max: newConfig.mobilePortrait.maxWidth },
+      ],
+    });
+  };
+
+  const editorConfig: ScalingConfigType = {
+    desktop: {
+      name: 'Desktop',
+      baseFontSize: config.baseFontSize,
+      idealWidth: 1440,
+      minWidth: config.breakpoints[0]?.min ?? 992,
+      maxWidth: config.breakpoints[0]?.max ?? 1920,
+    },
+    tablet: {
+      name: 'Tablet',
+      baseFontSize: config.breakpoints[1]?.base ?? 15,
+      idealWidth: 834,
+      minWidth: config.breakpoints[1]?.min ?? 768,
+      maxWidth: config.breakpoints[1]?.max ?? 991,
+    },
+    mobileLandscape: {
+      name: 'Mobile Landscape',
+      baseFontSize: config.breakpoints[2]?.base ?? 14,
+      idealWidth: 550,
+      minWidth: config.breakpoints[2]?.min ?? 480,
+      maxWidth: config.breakpoints[2]?.max ?? 767,
+    },
+    mobilePortrait: {
+      name: 'Mobile Portrait',
+      baseFontSize: config.breakpoints[3]?.base ?? 13,
+      idealWidth: 375,
+      minWidth: config.breakpoints[3]?.min ?? 320,
+      maxWidth: config.breakpoints[3]?.max ?? 479,
+    },
+  };
+
   return (
     <div className="flex flex-col" style={{ gap: 24 }}>
       <div>
         <h3 style={{ fontSize: 'var(--text-base)', fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>
-          Default Scaling Configuration
+          Scaling Configuration
         </h3>
         <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-tertiary)', marginBottom: 16 }}>
-          Set default REM fluid scaling breakpoints for new projects.
+          Configure REM fluid scaling breakpoints for your active project. Generated CSS uses clamp() for smooth scaling.
         </p>
-        <div
-          style={{
-            padding: 16, borderRadius: 8,
-            border: '1px solid var(--border-default)',
-            backgroundColor: 'var(--bg-secondary)',
-          }}
-        >
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12 }}>
-            {[
-              { label: 'Desktop', base: 16, min: 992, max: 1920 },
-              { label: 'Tablet', base: 15, min: 768, max: 991 },
-              { label: 'Mobile L', base: 14, min: 480, max: 767 },
-              { label: 'Mobile P', base: 13, min: 320, max: 479 },
-            ].map((bp) => (
-              <div key={bp.label} style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>{bp.label}</div>
-                <div style={{ fontSize: 'var(--text-lg)', fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>{bp.base}px</div>
-                <div style={{ fontSize: 9, fontFamily: 'var(--font-mono)', color: 'var(--text-tertiary)', marginTop: 4 }}>{bp.min}–{bp.max}px</div>
-              </div>
-            ))}
+
+        {isEditing ? (
+          <div>
+            <ScalingConfigEditor
+              config={editorConfig}
+              onConfigChange={handleConfigChange}
+            />
+            <div style={{ marginTop: 12, display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setIsEditing(false)}
+                style={{
+                  height: 32, padding: '0 16px',
+                  border: '1px solid var(--border-default)',
+                  borderRadius: 6, backgroundColor: 'transparent',
+                  fontSize: 'var(--text-sm)', fontWeight: 500,
+                  color: 'var(--text-secondary)', cursor: 'pointer',
+                  fontFamily: 'var(--font-sans)',
+                }}
+              >
+                Done
+              </button>
+            </div>
           </div>
-          <div style={{ marginTop: 16, textAlign: 'center' }}>
-            <button
-              style={{
-                height: 32, padding: '0 16px',
-                border: '1px solid var(--border-default)',
-                borderRadius: 6, backgroundColor: 'transparent',
-                fontSize: 'var(--text-xs)', fontWeight: 500,
-                color: 'var(--text-secondary)', cursor: 'pointer',
-                fontFamily: 'var(--font-sans)',
-              }}
-            >
-              Edit Defaults
-            </button>
+        ) : (
+          <div
+            style={{
+              padding: 16, borderRadius: 8,
+              border: '1px solid var(--border-default)',
+              backgroundColor: 'var(--bg-secondary)',
+            }}
+          >
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12 }}>
+              {config.breakpoints.map((bp) => (
+                <div key={bp.label} style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>{bp.label}</div>
+                  <div style={{ fontSize: 'var(--text-lg)', fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>{bp.base}px</div>
+                  <div style={{ fontSize: 9, fontFamily: 'var(--font-mono)', color: 'var(--text-tertiary)', marginTop: 4 }}>{bp.min}–{bp.max}px</div>
+                </div>
+              ))}
+            </div>
+            <div style={{ marginTop: 16, textAlign: 'center' }}>
+              <button
+                onClick={() => setIsEditing(true)}
+                disabled={isUpdating}
+                style={{
+                  height: 32, padding: '0 16px',
+                  border: '1px solid var(--border-default)',
+                  borderRadius: 6, backgroundColor: 'transparent',
+                  fontSize: 'var(--text-xs)', fontWeight: 500,
+                  color: 'var(--text-secondary)', cursor: 'pointer',
+                  fontFamily: 'var(--font-sans)',
+                  opacity: isUpdating ? 0.6 : 1,
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'var(--surface-hover)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}
+              >
+                {isUpdating ? 'Saving...' : 'Edit Configuration'}
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       <div style={{ borderTop: '1px solid var(--border-subtle)' }} />
@@ -751,17 +864,18 @@ function ScalingSection() {
           Preferred CSS unit for spacing and sizing inputs.
         </p>
         <div className="flex" style={{ gap: 8 }}>
-          {['px', 'rem', 'em'].map((unit) => (
+          {(['px', 'rem', 'em'] as const).map((unit) => (
             <button
               key={unit}
+              onClick={() => setDefaultUnit(unit)}
               style={{
                 height: 32, padding: '0 14px',
-                border: `1px solid ${unit === 'px' ? 'var(--accent)' : 'var(--border-default)'}`,
+                border: `1px solid ${unit === defaultUnit ? 'var(--accent)' : 'var(--border-default)'}`,
                 borderRadius: 6,
-                backgroundColor: unit === 'px' ? 'var(--accent-subtle)' : 'transparent',
-                fontSize: 'var(--text-sm)', fontWeight: unit === 'px' ? 600 : 400,
+                backgroundColor: unit === defaultUnit ? 'var(--accent-subtle)' : 'transparent',
+                fontSize: 'var(--text-sm)', fontWeight: unit === defaultUnit ? 600 : 400,
                 fontFamily: 'var(--font-mono)',
-                color: unit === 'px' ? 'var(--accent)' : 'var(--text-secondary)',
+                color: unit === defaultUnit ? 'var(--accent)' : 'var(--text-secondary)',
                 cursor: 'pointer',
               }}
             >
@@ -776,54 +890,7 @@ function ScalingSection() {
 
 /* ─── Shortcuts Section ─── */
 function ShortcutsSection() {
-  const shortcuts = [
-    { keys: '⌘ K', action: 'Open command palette' },
-    { keys: '⌘ B', action: 'Toggle sidebar' },
-    { keys: '⌘ `', action: 'Toggle dark mode' },
-    { keys: '⌘ ,', action: 'Open settings' },
-    { keys: '⌘ N', action: 'New project' },
-    { keys: '⌘ /', action: 'Open command palette (alt)' },
-    { keys: '↑ ↓', action: 'Navigate command palette items' },
-    { keys: '↵', action: 'Select command palette item' },
-    { keys: 'Esc', action: 'Close dialog / command palette' },
-  ];
-
-  return (
-    <div className="flex flex-col" style={{ gap: 24 }}>
-      <div>
-        <h3 style={{ fontSize: 'var(--text-base)', fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>
-          Keyboard Shortcuts
-        </h3>
-        <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-tertiary)', marginBottom: 16 }}>
-          Available keyboard shortcuts throughout the application.
-        </p>
-        <div style={{ border: '1px solid var(--border-default)', borderRadius: 8, overflow: 'hidden' }}>
-          {shortcuts.map((s, i) => (
-            <div
-              key={s.keys}
-              style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                padding: '10px 16px',
-                borderTop: i > 0 ? '1px solid var(--border-subtle)' : 'none',
-              }}
-            >
-              <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>{s.action}</span>
-              <kbd
-                style={{
-                  fontSize: 'var(--text-xs)', fontFamily: 'var(--font-mono)',
-                  color: 'var(--text-tertiary)', padding: '2px 8px',
-                  borderRadius: 4, border: '1px solid var(--border-default)',
-                  backgroundColor: 'var(--bg-secondary)',
-                }}
-              >
-                {s.keys}
-              </kbd>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
+  return <KeyboardShortcutsPanel />;
 }
 
 /* ─── Data Section ─── */

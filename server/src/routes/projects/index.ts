@@ -4,6 +4,7 @@ import { createProjectSchema, updateProjectSchema, projectIdSchema, updateNotesS
 import * as projectService from '../../services/project-service.js';
 import { ValidationError } from '../../utils/errors.js';
 import { logActivity } from '../../utils/activity-logger.js';
+import { prisma } from '../../db/client.js';
 
 export async function projectRoutes(app: FastifyInstance) {
   // All project routes require authentication
@@ -117,5 +118,43 @@ export async function projectRoutes(app: FastifyInstance) {
       parsed.data.notes,
     );
     return reply.send({ data: { notes: project.notes ?? '' } });
+  });
+
+  // GET /api/projects/:id/scores — latest audit scores for a project
+  app.get('/:id/scores', async (request, reply) => {
+    const params = projectIdSchema.safeParse(request.params);
+    if (!params.success) {
+      throw new ValidationError(params.error.flatten().fieldErrors);
+    }
+
+    // Verify ownership
+    await projectService.getProject(params.data.id, request.user.userId);
+
+    // Get latest audit of each type
+    const [speed, seo, aeo] = await Promise.all([
+      prisma.audit.findFirst({
+        where: { projectId: params.data.id, type: 'SPEED' },
+        orderBy: { createdAt: 'desc' },
+        select: { score: true },
+      }),
+      prisma.audit.findFirst({
+        where: { projectId: params.data.id, type: 'SEO' },
+        orderBy: { createdAt: 'desc' },
+        select: { score: true },
+      }),
+      prisma.audit.findFirst({
+        where: { projectId: params.data.id, type: 'AEO' },
+        orderBy: { createdAt: 'desc' },
+        select: { score: true },
+      }),
+    ]);
+
+    return reply.send({
+      data: {
+        speed: speed?.score ?? null,
+        seo: seo?.score ?? null,
+        aeo: aeo?.score ?? null,
+      },
+    });
   });
 }

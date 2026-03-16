@@ -294,5 +294,9 @@ export async function runAeoAudit(projectId: string, url: string, userId: string
 
   await checkScoreDrop(projectId, 'AEO', score, audit.id);
 
+  prisma.activityLog.create({
+    data: { userId, projectId, action: 'AUDIT_RUN', details: { type: 'AEO', url, score: Math.round(score) } },
+  }).catch(() => {});
+
   return audit;
 }

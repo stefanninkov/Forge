@@ -21,6 +21,11 @@ import { scalingRoutes } from './routes/scaling/index.js';
 import { healthDashboardRoutes } from './routes/health-dashboard/index.js';
 import { exportRoutes } from './routes/export/index.js';
 import { mcpRoutes } from './routes/mcp/index.js';
+import { semanticRoutes } from './routes/semantic/index.js';
+import { notificationRoutes } from './routes/notifications/index.js';
+import { aiRoutes } from './routes/ai/index.js';
+import { communityRoutes } from './routes/community/index.js';
+import { teamRoutes } from './routes/teams/index.js';
 
 const isDev = env.NODE_ENV === 'development';
 
@@ -65,10 +70,15 @@ async function start() {
   await app.register(reportRoutes, { prefix: '/api/reports' });
   await app.register(settingsRoutes, { prefix: '/api/settings' });
   await app.register(sectionRoutes, { prefix: '/api/sections' });
-  await app.register(scalingRoutes, { prefix: '/api/projects' });
+  await app.register(scalingRoutes, { prefix: '/api/scaling' });
   await app.register(healthDashboardRoutes, { prefix: '/api/health-dashboard' });
   await app.register(exportRoutes, { prefix: '/api/export' });
   await app.register(mcpRoutes, { prefix: '/api/mcp' });
+  await app.register(semanticRoutes, { prefix: '/api/semantic' });
+  await app.register(notificationRoutes, { prefix: '/api/notifications' });
+  await app.register(aiRoutes, { prefix: '/api/ai' });
+  await app.register(communityRoutes, { prefix: '/api/community' });
+  await app.register(teamRoutes, { prefix: '/api/teams' });
 
   // Health check
   app.get('/api/health', async () => {

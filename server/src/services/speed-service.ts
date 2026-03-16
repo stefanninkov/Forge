@@ -187,5 +187,9 @@ export async function runSpeedAudit(projectId: string, url: string, userId: stri
   // Check for score drop and create alert if needed
   await checkScoreDrop(projectId, 'SPEED', score, audit.id);
 
+  prisma.activityLog.create({
+    data: { userId, projectId, action: 'AUDIT_RUN', details: { type: 'SPEED', url, score: Math.round(score) } },
+  }).catch(() => {});
+
   return audit;
 }

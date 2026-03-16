@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { trackProjectVisit } from './use-recent-projects';
 
 interface ActiveProjectStore {
   activeProjectId: string | null;
@@ -13,6 +14,7 @@ export const useActiveProject = create<ActiveProjectStore>((set) => {
     setActiveProjectId: (id) => {
       if (id) {
         localStorage.setItem('forge-active-project', id);
+        trackProjectVisit(id);
       } else {
         localStorage.removeItem('forge-active-project');
       }

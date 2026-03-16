@@ -323,5 +323,9 @@ export async function runSeoAudit(projectId: string, url: string, userId: string
 
   await checkScoreDrop(projectId, 'SEO', score, audit.id);
 
+  prisma.activityLog.create({
+    data: { userId, projectId, action: 'AUDIT_RUN', details: { type: 'SEO', url, score: Math.round(score) } },
+  }).catch(() => {});
+
   return audit;
 }

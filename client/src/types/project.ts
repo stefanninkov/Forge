@@ -35,7 +35,8 @@ export type ActivityAction =
   | 'SCRIPT_DEPLOYED'
   | 'SECTION_CAPTURED'
   | 'FIGMA_ANALYZED'
-  | 'SETTINGS_UPDATED';
+  | 'SETTINGS_UPDATED'
+  | 'PROJECT_DUPLICATED';
 
 export interface Favorite {
   id: string;

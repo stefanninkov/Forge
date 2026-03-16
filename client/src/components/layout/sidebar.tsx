@@ -25,6 +25,8 @@ import {
   Wifi,
   WifiOff,
   ClipboardList,
+  Users,
+  Globe,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/hooks/use-theme';
@@ -78,6 +80,13 @@ const NAV_SECTIONS: NavSection[] = [
     header: 'Deliver',
     items: [
       { label: 'Reports', path: '/reports', icon: FileText },
+    ],
+  },
+  {
+    header: 'Collaborate',
+    items: [
+      { label: 'Teams', path: '/teams', icon: Users },
+      { label: 'Community', path: '/community', icon: Globe },
     ],
   },
 ];

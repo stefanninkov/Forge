@@ -1,12 +1,13 @@
-import { useState, useMemo } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   BookOpen, ChevronRight, Layers, Sparkles, Palette,
-  Gauge, Settings2, Zap, Search, Bot, LayoutTemplate,
+  Gauge, Search,
   ArrowRight,
 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/page-header';
 import { usePageTitle } from '@/hooks/use-page-title';
+import { guideContentMap } from '@/content/guide';
 
 // ── Guide content structure ─────────────────────────────────────
 
@@ -400,22 +401,31 @@ export default function GuidePage() {
                 {activeSubsection.title}
               </h1>
 
-              {/* Content paragraphs */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                {activeSubsection.content.map((paragraph, i) => (
-                  <p
-                    key={i}
-                    style={{
-                      fontSize: 'var(--text-base)',
-                      lineHeight: 1.7,
-                      color: 'var(--text-secondary)',
-                      margin: 0,
-                    }}
-                  >
-                    {paragraph}
-                  </p>
-                ))}
-              </div>
+              {/* Rich content component or fallback paragraphs */}
+              {(() => {
+                const contentKey = `${activeSectionId}:${activeSubsection.id}`;
+                const ContentComponent = guideContentMap[contentKey];
+                if (ContentComponent) {
+                  return <ContentComponent />;
+                }
+                return (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                    {activeSubsection.content.map((paragraph, i) => (
+                      <p
+                        key={i}
+                        style={{
+                          fontSize: 'var(--text-base)',
+                          lineHeight: 1.7,
+                          color: 'var(--text-secondary)',
+                          margin: 0,
+                        }}
+                      >
+                        {paragraph}
+                      </p>
+                    ))}
+                  </div>
+                );
+              })()}
 
               {/* Next link */}
               {activeSubsection.nextLink && (

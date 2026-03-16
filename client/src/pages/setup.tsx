@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ChevronDown, RotateCcw, Save, Upload, Trash2 } from 'lucide-react';
+import { SkeletonSetupPage } from '@/components/shared/skeleton';
 import { PageHeader } from '@/components/layout/page-header';
 import { usePageTitle } from '@/hooks/use-page-title';
 import { SetupCategorySection } from '@/components/modules/setup/setup-category-section';
@@ -410,27 +411,7 @@ export default function SetupPage() {
         )}
 
         {/* Loading */}
-        {setupLoading && projectId && (
-          <div
-            className="flex items-center justify-center"
-            style={{
-              height: 300,
-              opacity: 0,
-              animation: 'fadeIn 200ms ease-out 200ms forwards',
-            }}
-          >
-            <div
-              style={{
-                width: 20,
-                height: 20,
-                border: '2px solid var(--border-default)',
-                borderTopColor: 'var(--accent)',
-                borderRadius: '50%',
-                animation: 'spin 1s linear infinite',
-              }}
-            />
-          </div>
-        )}
+        {setupLoading && projectId && <SkeletonSetupPage />}
 
         {/* Error */}
         {setupError && (

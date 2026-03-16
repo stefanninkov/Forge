@@ -4,6 +4,7 @@ import { Sidebar } from '@/components/layout/sidebar';
 import { CommandPalette } from '@/components/shared/command-palette';
 import { StatusBar } from '@/components/shared/status-bar';
 import { useRecentPages } from '@/hooks/use-recent-pages';
+import { useKeyboardShortcuts } from '@/hooks/use-keyboard-shortcuts';
 
 const PAGE_LABELS: Record<string, string> = {
   '/': 'Dashboard',
@@ -33,6 +34,7 @@ export function AppLayout() {
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const location = useLocation();
   const trackPage = useRecentPages((s) => s.trackPage);
+  useKeyboardShortcuts();
 
   useEffect(() => {
     const label = getLabelForPath(location.pathname);
