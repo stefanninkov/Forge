@@ -37,22 +37,34 @@ async function resolveWebflowToken(uid: string, projectId?: string): Promise<str
 export const getWebflowSites = onCall({ region: 'europe-west1' }, async (request) => {
   const uid = requireAuth(request);
   const { projectId, tokenId } = request.data ?? {};
+  console.log('[getWebflowSites] called with:', { projectId, tokenId, uid });
 
-  let token: string;
-  if (tokenId) {
-    // Look up a specific token by ID from the user's vault
-    const db = getDb();
-    const userDoc = await db.collection('users').doc(uid).get();
-    const vault = userDoc.data()?.tokenVault?.webflow;
-    const entry = Array.isArray(vault) ? vault.find((t: { id: string }) => t.id === tokenId) : null;
-    if (!entry) throw new HttpsError('not-found', 'Webflow token not found in vault.');
-    token = entry.token;
-  } else {
-    token = await resolveWebflowToken(uid, projectId);
+  try {
+    let token: string;
+    if (tokenId) {
+      const db = getDb();
+      const userDoc = await db.collection('users').doc(uid).get();
+      const vault = userDoc.data()?.tokenVault?.webflow;
+      console.log('[getWebflowSites] vault entries:', Array.isArray(vault) ? vault.length : 'not array');
+      const entry = Array.isArray(vault) ? vault.find((t: { id: string }) => t.id === tokenId) : null;
+      if (!entry) {
+        console.error('[getWebflowSites] Token not found in vault for id:', tokenId);
+        throw new HttpsError('not-found', 'Webflow token not found in vault.');
+      }
+      token = entry.token;
+      console.log('[getWebflowSites] Using token from vault, starts with:', token.slice(0, 8));
+    } else {
+      token = await resolveWebflowToken(uid, projectId);
+      console.log('[getWebflowSites] Using resolved token, starts with:', token.slice(0, 8));
+    }
+
+    const data = await webflowFetch('/sites', token);
+    console.log('[getWebflowSites] Response:', JSON.stringify(data).slice(0, 500));
+    return { data: data.sites || [] };
+  } catch (err) {
+    console.error('[getWebflowSites] Error:', err);
+    throw err;
   }
-
-  const data = await webflowFetch('/sites', token);
-  return { data: data.sites || [] };
 });
 
 export const getWebflowPages = onCall({ region: 'europe-west1' }, async (request) => {
