@@ -22,7 +22,7 @@ export default function SetupPage() {
   const queryProjectId = params.projectId ?? searchParams.get('project');
   const { data: projects, isLoading: projectsLoading } = useProjects();
   const { data: vault } = useTokenVault();
-  const { data: sites, isLoading: sitesLoading } = useWebflowSites();
+  const { data: sites, isLoading: sitesLoading } = useWebflowSites(webflowTokenId || undefined);
   const updateProject = useUpdateProject();
   const deleteProject = useDeleteProject();
 

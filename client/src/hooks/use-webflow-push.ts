@@ -33,12 +33,12 @@ interface PushToWebflowParams {
 
 // ─── Site & Page Queries ───────────────────────────────────────────────────────
 
-export function useWebflowSites() {
+export function useWebflowSites(tokenId?: string) {
   return useQuery({
-    queryKey: ['webflow', 'sites'],
+    queryKey: ['webflow', 'sites', tokenId ?? 'default'],
     queryFn: async () => {
-      const fn = httpsCallable<void, { data: WebflowSite[] }>(functions, 'getWebflowSites');
-      const result = await fn();
+      const fn = httpsCallable<{ tokenId?: string }, { data: WebflowSite[] }>(functions, 'getWebflowSites');
+      const result = await fn(tokenId ? { tokenId } : {});
       return result.data.data;
     },
     staleTime: 60_000,

@@ -36,8 +36,21 @@ async function resolveWebflowToken(uid: string, projectId?: string): Promise<str
 
 export const getWebflowSites = onCall({ region: 'europe-west1' }, async (request) => {
   const uid = requireAuth(request);
-  const { projectId } = request.data ?? {};
-  const token = await resolveWebflowToken(uid, projectId);
+  const { projectId, tokenId } = request.data ?? {};
+
+  let token: string;
+  if (tokenId) {
+    // Look up a specific token by ID from the user's vault
+    const db = getDb();
+    const userDoc = await db.collection('users').doc(uid).get();
+    const vault = userDoc.data()?.tokenVault?.webflow;
+    const entry = Array.isArray(vault) ? vault.find((t: { id: string }) => t.id === tokenId) : null;
+    if (!entry) throw new HttpsError('not-found', 'Webflow token not found in vault.');
+    token = entry.token;
+  } else {
+    token = await resolveWebflowToken(uid, projectId);
+  }
+
   const data = await webflowFetch('/sites', token);
   return { data: data.sites || [] };
 });
