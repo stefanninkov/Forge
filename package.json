@@ -14,6 +14,8 @@
     "build:functions": "cd functions && npm run build",
     "deploy:functions": "firebase deploy --only functions",
     "deploy:rules": "firebase deploy --only firestore:rules",
-    "deploy": "firebase deploy"
+    "deploy": "cd client && npm run build && npx gh-pages -d dist",
+    "deploy:all": "firebase deploy",
+    "emulate": "firebase emulators:start"
   }
 }

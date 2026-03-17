@@ -7,24 +7,20 @@ import { lazy, Suspense, type ReactNode } from 'react';
 
 const DashboardPage = lazy(() => import('@/pages/dashboard'));
 const SetupPage = lazy(() => import('@/pages/setup'));
-const FigmaPage = lazy(() => import('@/pages/figma'));
 const TemplatesPage = lazy(() => import('@/pages/templates'));
 const AnimationsPage = lazy(() => import('@/pages/animations'));
-const SpeedPage = lazy(() => import('@/pages/speed'));
-const SeoPage = lazy(() => import('@/pages/seo'));
-const AeoPage = lazy(() => import('@/pages/aeo'));
-const ActivityPage = lazy(() => import('@/pages/activity'));
-const ReportsPage = lazy(() => import('@/pages/reports'));
-const HealthPage = lazy(() => import('@/pages/health'));
 const SettingsPage = lazy(() => import('@/pages/settings'));
 const GuidePage = lazy(() => import('@/pages/guide'));
 const LoginPage = lazy(() => import('@/pages/login'));
 const RegisterPage = lazy(() => import('@/pages/register'));
 const ForgotPasswordPage = lazy(() => import('@/pages/forgot-password'));
 const ResetPasswordPage = lazy(() => import('@/pages/reset-password'));
-const SharedReportPage = lazy(() => import('@/pages/shared-report'));
-const TeamsPage = lazy(() => import('@/pages/teams'));
-const CommunityPage = lazy(() => import('@/pages/community'));
+
+// Project workflow step pages
+const ProjectFigmaPage = lazy(() => import('@/pages/project-figma'));
+const ProjectStructurePage = lazy(() => import('@/pages/project-structure'));
+const ProjectStylePage = lazy(() => import('@/pages/project-style'));
+const ProjectReviewPage = lazy(() => import('@/pages/project-review'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -39,7 +35,6 @@ const queryClient = new QueryClient({
 function PageLoader() {
   return (
     <div style={{ padding: '24px', animation: 'fadeIn 200ms ease-out' }}>
-      {/* Skeleton page header */}
       <div style={{ marginBottom: 24, padding: '16px 0' }}>
         <div
           style={{
@@ -62,7 +57,6 @@ function PageLoader() {
           }}
         />
       </div>
-      {/* Skeleton content grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
         {Array.from({ length: 6 }).map((_, i) => (
           <div
@@ -102,7 +96,6 @@ function PublicRoute({ children }: { children: ReactNode }) {
 }
 
 export default function App() {
-  // Firebase onAuthStateChanged handles session restoration automatically
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, '')}>
@@ -151,24 +144,19 @@ export default function App() {
               }
             >
               <Route index element={<DashboardPage />} />
-              <Route path="activity" element={<ActivityPage />} />
               <Route path="setup" element={<SetupPage />} />
-              <Route path="figma" element={<FigmaPage />} />
               <Route path="templates" element={<TemplatesPage />} />
               <Route path="animations" element={<AnimationsPage />} />
-              <Route path="speed" element={<SpeedPage />} />
-              <Route path="seo" element={<SeoPage />} />
-              <Route path="aeo" element={<AeoPage />} />
-              <Route path="reports" element={<ReportsPage />} />
-              <Route path="health" element={<HealthPage />} />
               <Route path="settings" element={<SettingsPage />} />
               <Route path="guide" element={<GuidePage />} />
-              <Route path="teams" element={<TeamsPage />} />
-              <Route path="community" element={<CommunityPage />} />
-            </Route>
 
-            {/* Public shared report (no auth required) */}
-            <Route path="report/:token" element={<SharedReportPage />} />
+              {/* Project workflow routes */}
+              <Route path="project/:projectId/setup" element={<SetupPage />} />
+              <Route path="project/:projectId/figma" element={<ProjectFigmaPage />} />
+              <Route path="project/:projectId/structure" element={<ProjectStructurePage />} />
+              <Route path="project/:projectId/style" element={<ProjectStylePage />} />
+              <Route path="project/:projectId/review" element={<ProjectReviewPage />} />
+            </Route>
 
             {/* Catch-all */}
             <Route path="*" element={<Navigate to="/" replace />} />

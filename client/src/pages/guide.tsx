@@ -7,7 +7,10 @@ import {
 } from 'lucide-react';
 import { PageHeader } from '@/components/layout/page-header';
 import { usePageTitle } from '@/hooks/use-page-title';
-import { guideContentMap } from '@/content/guide';
+
+// Guide content map — rich content components keyed by "sectionId:subId"
+// Falls back to paragraph rendering when no component is registered
+const guideContentMap: Record<string, React.FC> = {};
 
 // ── Guide content structure ─────────────────────────────────────
 
@@ -255,7 +258,6 @@ const GUIDE_SECTIONS: GuideSection[] = [
 export default function GuidePage() {
   usePageTitle('Guide');
   const [searchParams, setSearchParams] = useSearchParams();
-  const navigate = useNavigate();
 
   const activeSectionId = searchParams.get('section') || GUIDE_SECTIONS[0].id;
   const activeSubId = searchParams.get('sub') || null;

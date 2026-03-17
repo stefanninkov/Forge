@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, FolderOpen, Zap, Upload, LayoutGrid, Activity, Layers, ListChecks, Clock, ArrowUpDown } from 'lucide-react';
+import { Plus, FolderOpen, LayoutGrid, Sparkles, Layers, ListChecks, ArrowUpDown } from 'lucide-react';
 import { useRecentProjects } from '@/hooks/use-recent-projects';
 import { SkeletonProjectGrid } from '@/components/shared/skeleton';
 import { PageHeader } from '@/components/layout/page-header';
@@ -8,18 +8,15 @@ import { usePageTitle } from '@/hooks/use-page-title';
 import { ProjectCard } from '@/components/shared/project-card';
 import { CreateProjectDialog } from '@/components/shared/create-project-dialog';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
-import { WelcomeDialog } from '@/components/shared/welcome-dialog';
 import { useProjects, useCreateProject, useUpdateProject, useDeleteProject, useDuplicateProject } from '@/hooks/use-projects';
-import { ProjectNotesPanel } from '@/components/shared/project-notes-panel';
-import { HandoffReportDialog } from '@/components/shared/handoff-report-dialog';
 import type { Project } from '@/types/project';
 
 const QUICK_ACTIONS = [
-  { label: 'Run Speed Audit', icon: Zap, path: '/speed' },
-  { label: 'Import from Figma', icon: Upload, path: '/figma' },
-  { label: 'View Templates', icon: LayoutGrid, path: '/templates' },
-  { label: 'Check Site Health', icon: Activity, path: '/health' },
+  { label: 'Browse Templates', icon: LayoutGrid, path: '/templates' },
+  { label: 'Animation Library', icon: Sparkles, path: '/animations' },
 ] as const;
+
+// Note: "New Project" is already the primary CTA button in the header
 
 export default function DashboardPage() {
   usePageTitle('Dashboard');
@@ -33,8 +30,6 @@ export default function DashboardPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editProject, setEditProject] = useState<Project | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null);
-  const [notesTarget, setNotesTarget] = useState<Project | null>(null);
-  const [handoffTarget, setHandoffTarget] = useState<Project | null>(null);
   const [sortBy, setSortBy] = useState<'recent' | 'name' | 'created'>('recent');
   const { recentIds } = useRecentProjects();
 
@@ -200,7 +195,7 @@ export default function DashboardPage() {
               {[
                 { icon: Layers, text: 'Create a project and link it to a Webflow site' },
                 { icon: ListChecks, text: 'Run the setup wizard to configure settings' },
-                { icon: Zap, text: 'Audit speed, SEO, and AEO for optimization' },
+                { icon: Sparkles, text: 'Add animations and push to Webflow' },
               ].map((item, i) => {
                 const Icon = item.icon;
                 return (
@@ -315,8 +310,6 @@ export default function DashboardPage() {
                   onEdit={setEditProject}
                   onDelete={setDeleteTarget}
                   onDuplicate={(p) => duplicateProject.mutate(p.id)}
-                  onNotes={setNotesTarget}
-                  onHandoffReport={setHandoffTarget}
                 />
               ))}
             </div>
@@ -407,24 +400,6 @@ export default function DashboardPage() {
         destructive
       />
 
-      {/* First-run welcome */}
-      <WelcomeDialog onCreateProject={() => setCreateOpen(true)} />
-
-      {/* Notes panel */}
-      <ProjectNotesPanel
-        projectId={notesTarget?.id ?? null}
-        projectName={notesTarget?.name ?? ''}
-        open={notesTarget !== null}
-        onClose={() => setNotesTarget(null)}
-      />
-
-      {/* Handoff report */}
-      <HandoffReportDialog
-        projectId={handoffTarget?.id ?? null}
-        projectName={handoffTarget?.name ?? ''}
-        open={handoffTarget !== null}
-        onClose={() => setHandoffTarget(null)}
-      />
     </>
   );
 }

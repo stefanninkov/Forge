@@ -1,5 +1,5 @@
 import { onCall } from 'firebase-functions/v2/https';
-import { requireAuth, getDb, getUserToken, callClaudeJson } from './utils';
+import { requireAuth, getDb, getProjectToken, callClaudeJson } from './utils';
 
 // ── Types ──
 
@@ -47,8 +47,18 @@ interface ParsedNode {
   type: string;
   figmaType: string;
   suggestedClass: string;
+  semanticTag: string;
+  semanticConfidence: 'high' | 'medium' | 'low';
+  ariaLabel?: string;
   children: ParsedNode[];
   properties: Record<string, unknown>;
+}
+
+interface ParseContext {
+  depth: number;
+  index: number;
+  parentClass: string;
+  sectionName: string;
 }
 
 interface AuditIssue {
@@ -65,20 +75,120 @@ function toKebabCase(str: string): string {
   return str.replace(/([a-z])([A-Z])/g, '$1-$2').replace(/[\s_/]+/g, '-').replace(/[^a-zA-Z0-9-]/g, '').toLowerCase().replace(/-+/g, '-').replace(/^-|-$/g, '');
 }
 
-function suggestClassName(name: string, type: string): string {
-  const kebab = toKebabCase(name);
-  if (!kebab) return type.toLowerCase();
-  const lower = name.toLowerCase();
-  if (lower.includes('section') || type === 'SECTION') return `section_${kebab.replace(/section[-_]?/i, '')}` || 'section';
-  if (lower.includes('nav') || lower.includes('header')) return `${kebab}_component`;
-  if (lower.includes('wrapper') || lower.includes('container')) return `${kebab}_wrapper`;
-  if (lower.includes('grid') || lower.includes('list')) return `${kebab}_list`;
-  return kebab;
+function isBreakpointFrame(node: FigmaNode): boolean {
+  const name = node.name.trim();
+  return /^(1920|1440|1280|1024|991|768|767|550|480|479|390|375|360|320)$/.test(name);
 }
 
-function mapFigmaType(figmaType: string): string {
-  const map: Record<string, string> = { FRAME: 'div', GROUP: 'div', COMPONENT: 'div', COMPONENT_SET: 'div', INSTANCE: 'div', TEXT: 'text', RECTANGLE: 'div', ELLIPSE: 'div', VECTOR: 'svg', LINE: 'hr', SECTION: 'section', BOOLEAN_OPERATION: 'svg' };
-  return map[figmaType] ?? 'div';
+function selectPrimaryFrame(rootChildren: FigmaNode[]): FigmaNode | null {
+  const breakpoints = rootChildren.filter(isBreakpointFrame);
+  if (breakpoints.length > 0) {
+    const sorted = [...breakpoints].sort((a, b) => (parseInt(b.name) || 0) - (parseInt(a.name) || 0));
+    return sorted[0];
+  }
+  return null;
+}
+
+function toClientFirstName(name: string): string {
+  return name
+    .replace(/[^a-zA-Z0-9\s_-]/g, '')
+    .replace(/[\s]+/g, '-')
+    .toLowerCase()
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 40);
+}
+
+function suggestClientFirstClass(node: FigmaNode, ctx: ParseContext): string {
+  const name = node.name.trim();
+  const lower = name.toLowerCase();
+
+  if (/^(frame|group|rectangle|ellipse|vector|instance|component|boolean)\s*\d*$/i.test(name)) {
+    if (ctx.parentClass) return `${ctx.sectionName || ctx.parentClass}_item`;
+    return `element-${ctx.index}`;
+  }
+  if (isBreakpointFrame(node)) return `_breakpoint_${name}`;
+
+  const clean = toClientFirstName(name);
+
+  if (ctx.depth <= 1 && node.type !== 'TEXT') {
+    const sectionName = clean.replace(/[-_]?section[-_]?/g, '');
+    return `section_${sectionName || 'content'}`;
+  }
+
+  if (lower.includes('nav') || lower.includes('menu') || lower.includes('navigation'))
+    return `navbar_${clean.replace(/nav(bar|igation)?[-_]?/g, '') || 'component'}`;
+  if (lower.includes('hero')) return `hero_${clean.replace(/hero[-_]?/g, '') || 'wrapper'}`;
+  if (lower.includes('footer')) return `footer_${clean.replace(/footer[-_]?/g, '') || 'wrapper'}`;
+  if (lower.includes('header') && ctx.depth <= 2) return `header_${clean.replace(/header[-_]?/g, '') || 'wrapper'}`;
+  if (lower.includes('cta')) return `cta_${clean.replace(/cta[-_]?/g, '') || 'wrapper'}`;
+  if (lower.includes('faq')) return `faq_${clean.replace(/faq[-_]?/g, '') || 'wrapper'}`;
+  if (lower.includes('testimonial')) return `testimonial_${clean.replace(/testimonials?[-_]?/g, '') || 'wrapper'}`;
+  if (lower.includes('pricing')) return `pricing_${clean.replace(/pricing[-_]?/g, '') || 'wrapper'}`;
+  if (lower.includes('feature')) return `feature_${clean.replace(/features?[-_]?/g, '') || 'wrapper'}`;
+
+  if (lower.includes('card')) return `${ctx.sectionName}_card`;
+  if (lower.includes('button') || lower.includes('btn')) return `button_${clean.replace(/button|btn[-_]?/g, '') || 'primary'}`;
+  if (lower.includes('icon')) return `icon_${clean.replace(/icon[-_]?/g, '') || 'wrapper'}`;
+  if (lower.includes('image') || lower.includes('img') || lower.includes('photo'))
+    return `${ctx.sectionName}_image`;
+
+  if (lower.includes('wrapper') || lower.includes('wrap')) return `${clean}_wrapper`;
+  if (lower.includes('container')) return `${clean}_container`;
+  if (lower.includes('content')) return `${clean}_content`;
+  if (lower.includes('grid') || lower.includes('list')) return `${clean}_list`;
+  if (lower.includes('row')) return `${clean}_row`;
+  if (lower.includes('col') || lower.includes('column')) return `${clean}_col`;
+
+  return clean || `${ctx.sectionName}_element`;
+}
+
+function detectSemanticTag(node: FigmaNode, ctx: ParseContext): { tag: string; confidence: 'high' | 'medium' | 'low'; ariaLabel?: string } {
+  const lower = node.name.toLowerCase();
+
+  if (lower.includes('nav') || lower.includes('menu') || lower.includes('navigation'))
+    return { tag: 'nav', confidence: 'high', ariaLabel: 'Main navigation' };
+  if ((lower.includes('header') || lower.includes('topbar')) && ctx.depth <= 1)
+    return { tag: 'header', confidence: 'high' };
+  if (lower.includes('footer') && ctx.depth <= 1)
+    return { tag: 'footer', confidence: 'high' };
+  if (lower.includes('aside') || lower.includes('sidebar'))
+    return { tag: 'aside', confidence: 'medium' };
+
+  if (ctx.depth <= 1 && node.type !== 'TEXT')
+    return { tag: 'section', confidence: 'medium' };
+
+  if (node.type === 'TEXT' && node.style) {
+    const fs = node.style.fontSize || 0;
+    if (fs >= 48) return { tag: 'h1', confidence: 'medium' };
+    if (fs >= 36) return { tag: 'h2', confidence: 'medium' };
+    if (fs >= 24) return { tag: 'h3', confidence: 'medium' };
+    if (fs >= 20) return { tag: 'h4', confidence: 'low' };
+    return { tag: 'p', confidence: 'medium' };
+  }
+
+  if (lower.includes('button') || lower.includes('btn') || lower.includes('cta'))
+    return { tag: 'button', confidence: 'medium' };
+  if (lower.includes('link') || lower.includes('anchor'))
+    return { tag: 'a', confidence: 'medium' };
+  if (lower.includes('image') || lower.includes('img') || lower.includes('photo') || lower.includes('logo'))
+    return { tag: 'img', confidence: 'medium' };
+  if (node.type === 'RECTANGLE' && node.fills?.some((f) => f.type === 'IMAGE'))
+    return { tag: 'img', confidence: 'high' };
+  if (lower.includes('list') || lower.includes('items'))
+    return { tag: 'ul', confidence: 'low' };
+  if (lower.includes('question') || lower.includes('faq-q'))
+    return { tag: 'h3', confidence: 'medium' };
+  if (lower.includes('card') || lower.includes('article') || lower.includes('post'))
+    return { tag: 'article', confidence: 'low' };
+
+  return { tag: 'div', confidence: 'low' };
+}
+
+function mapFigmaType(node: FigmaNode, ctx: ParseContext): string {
+  // Use semantic detection instead of simple type map
+  const semantic = detectSemanticTag(node, ctx);
+  return semantic.tag;
 }
 
 function rgba(c: FigmaColor, opacity?: number): string {
@@ -95,7 +205,8 @@ function mapAlign(a: string): string {
   return m[a] ?? a.toLowerCase();
 }
 
-function parseFigmaNode(node: FigmaNode, depth = 0): ParsedNode {
+function parseFigmaNode(node: FigmaNode, depth = 0, index = 0, parentClass = '', sectionName = ''): ParsedNode {
+  const ctx: ParseContext = { depth, index, parentClass, sectionName };
   const properties: Record<string, unknown> = {};
   const styles: Record<string, string> = {};
 
@@ -149,13 +260,20 @@ function parseFigmaNode(node: FigmaNode, depth = 0): ParsedNode {
 
   properties._styles = styles;
 
+  const suggestedClass = suggestClientFirstClass(node, ctx);
+  const semantic = detectSemanticTag(node, ctx);
+  const currentSection = depth <= 1 ? suggestedClass.replace(/^section_/, '') : sectionName;
+
   return {
     id: node.id,
     name: node.name,
-    type: mapFigmaType(node.type),
+    type: mapFigmaType(node, ctx),
     figmaType: node.type,
-    suggestedClass: suggestClassName(node.name, node.type),
-    children: (node.children ?? []).filter((c) => c.type !== 'VECTOR' || depth < 3).map((c) => parseFigmaNode(c, depth + 1)),
+    suggestedClass,
+    semanticTag: semantic.tag,
+    semanticConfidence: semantic.confidence,
+    ariaLabel: semantic.ariaLabel,
+    children: (node.children ?? []).filter((c) => c.type !== 'VECTOR' || depth < 3).map((c, i) => parseFigmaNode(c, depth + 1, i, suggestedClass, currentSection)),
     properties,
   };
 }
@@ -184,9 +302,8 @@ export const analyzeFigma = onCall({ region: 'europe-west1', timeoutSeconds: 120
   const projectDoc = await db.collection('projects').doc(projectId).get();
   if (!projectDoc.exists || projectDoc.data()?.userId !== uid) throw new Error('Project not found');
 
-  // Get Figma token
-  const figmaToken = await getUserToken(uid, 'figma');
-  if (!figmaToken) throw new Error('Figma not connected. Go to Settings → Integrations to connect your Figma account.');
+  // Get Figma token from project vault
+  const figmaToken = await getProjectToken(uid, projectId, 'figma');
 
   // Extract file key
   const match = figmaUrl.match(/figma\.com\/(?:design|file)\/([a-zA-Z0-9]+)/);
@@ -210,8 +327,18 @@ export const analyzeFigma = onCall({ region: 'europe-west1', timeoutSeconds: 120
   }
   if (!targetPage) throw new Error('No pages found in Figma file');
 
-  const rawStructure = parseFigmaNode(targetPage);
   const issues: AuditIssue[] = [];
+
+  // Detect breakpoint frames
+  const primaryFrame = targetPage.children ? selectPrimaryFrame(targetPage.children) : null;
+  let parseTarget = targetPage;
+  if (primaryFrame) {
+    const breakpoints = (targetPage.children ?? []).filter(isBreakpointFrame).map((c) => c.name).sort((a, b) => parseInt(b) - parseInt(a));
+    issues.push({ severity: 'info', category: 'breakpoints', message: `Detected responsive breakpoints: ${breakpoints.join(', ')}. Parsing ${primaryFrame.name} as primary desktop layout.`, nodeId: primaryFrame.id, nodeName: primaryFrame.name });
+    parseTarget = primaryFrame;
+  }
+
+  const rawStructure = parseFigmaNode(parseTarget);
   auditNode(rawStructure, issues);
 
   // Save analysis to Firestore
@@ -243,16 +370,25 @@ export const suggestClassNames = onCall({ region: 'europe-west1', timeoutSeconds
     analysisId?: string;
   };
 
-  const apiKey = await getUserToken(uid, 'anthropic');
-  if (!apiKey) throw new Error('Anthropic API key not set. Go to Settings → Integrations to add it.');
+  // Resolve projectId from analysisId to look up vault token
+  const db = getDb();
+  let projectId: string | undefined;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let analysisData: Record<string, any> | undefined;
+  if (analysisId) {
+    const analysisDoc = await db.collection('figmaAnalyses').doc(analysisId).get();
+    if (!analysisDoc.exists) throw new Error('Analysis not found');
+    analysisData = analysisDoc.data();
+    projectId = analysisData?.projectId;
+  }
+  if (!projectId) throw new Error('Could not determine project for token resolution');
+
+  const apiKey = await getProjectToken(uid, projectId, 'anthropic');
 
   // If analysisId is provided, run AI suggestions on the full analysis
-  if (analysisId) {
-    const db = getDb();
-    const doc = await db.collection('figmaAnalyses').doc(analysisId).get();
-    if (!doc.exists) throw new Error('Analysis not found');
+  if (analysisId && analysisData) {
 
-    const structure = doc.data()?.rawStructure;
+    const structure = analysisData.rawStructure;
     const simplified = simplifyForAi(structure);
 
     const suggestions = await callClaudeJson<Record<string, unknown>>({

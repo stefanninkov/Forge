@@ -1,5 +1,5 @@
 import { onCall } from 'firebase-functions/v2/https';
-import { requireAuth, getDb } from './utils';
+import { getDb } from './utils';
 
 // ── Animation Presets Data ──
 
@@ -88,8 +88,7 @@ const SETUP_CHECKLIST = [
 
 // ── Cloud Function ──
 
-export const seedSystemData = onCall({ region: 'europe-west1', timeoutSeconds: 30 }, async (request) => {
-  requireAuth(request);
+export const seedSystemData = onCall({ region: 'europe-west1', timeoutSeconds: 30 }, async () => {
   const db = getDb();
 
   // Check if already seeded

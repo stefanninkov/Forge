@@ -1,7 +1,7 @@
 # FORGE — Product Architecture & Build Plan
 
 > **Full-pipeline Webflow development accelerator.**
-> From Figma design → Webflow build → Animations → Page speed → SEO/AEO optimization.
+> From Figma design → Structure → Style & Animate → Review & Push to Webflow.
 
 ---
 
@@ -50,8 +50,26 @@ Forge is a web application (with a Phase 2 browser extension) that streamlines e
 
 ```
 [Figma API] → Forge Backend → [Claude AI] → Structure Preview UI → [Webflow MCP] → Live Webflow Project
-[Live URL] → Forge Crawler → [PageSpeed API] → Audit Dashboard → Fix Recommendations
 ```
+
+### 5-Step Project Workflow
+
+Each project follows a linear pipeline with shared state:
+
+1. **Setup** — Create project, connect Figma/Webflow tokens, configure scaling system
+2. **Import** — Paste Figma URL, select pages/frames, run analysis
+3. **Structure** — Review/edit element tree, AI suggestions, semantic HTML, audit panel
+4. **Style & Animate** — Visual CSS editor, animation presets, timeline, undo/redo
+5. **Review & Push** — Responsive preview, class review, image checklist, a11y check, push to Webflow
+
+### Sidebar Navigation
+
+- **Dashboard** — Project cards with step progress indicators
+- **Per-project steps** — Setup → Import → Structure → Style → Review (shown when a project is active)
+- **Templates** — Section template library (global)
+- **Animations** — Animation playground and presets (global)
+- **Settings** — Account, appearance, integrations
+- **Guide** — In-app documentation
 
 ### Module Independence
 
@@ -60,7 +78,6 @@ Each module operates independently but shares data through the project context. 
 - A project links to one Webflow site (via MCP)
 - A project can link to one or more Figma files
 - Templates are global (across all projects) or project-scoped
-- Audits (speed, SEO, AEO) are stored per-project with historical data
 - Animation configs are per-project (master script generation)
 
 ---
@@ -312,48 +329,6 @@ Forge generates a single master script per project that:
 
 ---
 
-## Module 5: Page Speed Optimizer
-
-Runs Google PageSpeed Insights API against staging or live URL. Parses Lighthouse results into actionable fix categories:
-
-- **Images:** Unoptimized detection, WebP/AVIF suggestions, missing lazy loading, oversized images
-- **Fonts:** `font-display` check, subsetting opportunities, font file request count
-- **Third-party scripts:** Heavy/blocking scripts, impact measurement, async/defer suggestions
-- **Webflow overhead:** Unused interactions, oversized page CSS, unnecessary custom code
-- **Core Web Vitals:** LCP, FID/INP, CLS tracking with historical trends
-
-Generates prioritized fix list. Some fixes auto-generated as code snippets or pushed via MCP.
-
----
-
-## Module 6: SEO Audit & Monitor
-
-Custom Node.js crawler checks:
-- Meta titles/descriptions (length, uniqueness, keyword presence)
-- Heading hierarchy (H1-H6, single H1, logical nesting)
-- Schema/structured data validation (JSON-LD, required properties)
-- Image alt text completeness and quality
-- Internal linking analysis (orphan pages, link equity)
-- Canonical tags, OG tags
-- Sitemap validation, robots.txt analysis
-- Core Web Vitals correlation
-
-Supports staging URLs and live URLs. Ongoing monitoring (daily/weekly schedule) with email/Slack alerts. Historical data for trend analysis. MCP integration reads Webflow page metadata directly.
-
----
-
-## Module 7: AEO Optimization
-
-Lighter complement to AEO Dashboard. On-page optimization for AI answer engine visibility:
-- FAQ schema detection and validation
-- Q&A content structure analysis
-- Answer paragraph optimization (40-60 word concise answers)
-- Heading structure for topic clustering
-- Entity coverage analysis
-- Content freshness signals
-
-Links to AEO Dashboard for deeper analysis (citation tracking, competitor comparison, multi-engine monitoring).
-
 ---
 
 ## Database Schema
@@ -493,16 +468,6 @@ GET  /api/animations/presets                — List presets (system + user)
 POST /api/animations/presets                — Create custom preset
 PUT  /api/animations/presets/:id            — Update preset
 POST /api/animations/presets/:id/publish    — Publish to community
-```
-
-### Audits
-```
-POST /api/projects/:id/audits/speed  — Run speed audit
-POST /api/projects/:id/audits/seo    — Run SEO audit
-POST /api/projects/:id/audits/aeo    — Run AEO audit
-GET  /api/projects/:id/audits        — List all audits
-GET  /api/audits/:id                 — Audit detail
-GET  /api/projects/:id/alerts        — List alerts
 ```
 
 ---

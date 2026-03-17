@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react';
-import { NotificationBell } from '@/components/shared/notification-bell';
 
 export interface PageHeaderProps {
   title: string;
@@ -50,10 +49,11 @@ export function PageHeader({ title, description, actions }: PageHeaderProps) {
             </p>
           )}
         </div>
-        <div className="flex items-center" style={{ gap: 8 }}>
-          {actions}
-          <NotificationBell />
-        </div>
+        {actions && (
+          <div className="flex items-center" style={{ gap: 8 }}>
+            {actions}
+          </div>
+        )}
       </div>
     </header>
   );

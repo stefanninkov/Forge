@@ -1,530 +1,522 @@
-import { useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { ChevronDown, RotateCcw, Save, Upload, Trash2 } from 'lucide-react';
-import { SkeletonSetupPage } from '@/components/shared/skeleton';
+import { useState, useEffect } from 'react';
+import { useSearchParams, useNavigate, useParams, Link } from 'react-router-dom';
+import {
+  Check, X, ArrowRight, Loader2, Trash2, Archive,
+} from 'lucide-react';
 import { PageHeader } from '@/components/layout/page-header';
 import { usePageTitle } from '@/hooks/use-page-title';
-import { SetupCategorySection } from '@/components/modules/setup/setup-category-section';
-import { SaveProfileDialog } from '@/components/modules/setup/save-profile-dialog';
 import { ConfirmDialog } from '@/components/shared/confirm-dialog';
-import { useProjects } from '@/hooks/use-projects';
-import {
-  useSetupProgress,
-  useUpdateSetupItem,
-  useResetSetupProgress,
-  useSetupProfiles,
-  useCreateProfile,
-  useDeleteProfile,
-  useApplyProfile,
-} from '@/hooks/use-setup';
+import { useProjects, useUpdateProject, useDeleteProject } from '@/hooks/use-projects';
+import { useTokenVault } from '@/hooks/use-integrations';
+import { useWebflowSites } from '@/hooks/use-webflow-push';
+import { ScalingConfigEditor } from '@/components/shared/editors/scaling-config';
+import { updateDocument } from '@/lib/firestore';
+import { toast } from 'sonner';
+import type { ScalingConfig } from '@/lib/scaling-system';
 
 export default function SetupPage() {
   usePageTitle('Setup');
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const queryProjectId = searchParams.get('project');
+  const params = useParams<{ projectId: string }>();
+  const queryProjectId = params.projectId ?? searchParams.get('project');
   const { data: projects, isLoading: projectsLoading } = useProjects();
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
-  const [projectDropdownOpen, setProjectDropdownOpen] = useState(false);
-  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
-  const [saveProfileOpen, setSaveProfileOpen] = useState(false);
-  const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
+  const { data: vault } = useTokenVault();
+  const { data: sites, isLoading: sitesLoading } = useWebflowSites();
+  const updateProject = useUpdateProject();
+  const deleteProject = useDeleteProject();
 
-  // Priority: manually selected > query param > first project
-  const projectId = selectedProjectId ?? queryProjectId ?? projects?.[0]?.id ?? null;
-  const selectedProject = projects?.find((p) => p.id === projectId);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false);
 
-  const { data: setupData, isLoading: setupLoading, error: setupError } = useSetupProgress(projectId);
-  const updateItem = useUpdateSetupItem(projectId);
-  const resetProgress = useResetSetupProgress(projectId);
-  const { data: profiles } = useSetupProfiles();
-  const createProfile = useCreateProfile();
-  const deleteProfile = useDeleteProfile();
-  const applyProfile = useApplyProfile(projectId);
+  // Project selection
+  const projectId = queryProjectId ?? projects?.[0]?.id ?? null;
+  const project = projects?.find((p) => p.id === projectId) ?? null;
 
-  function handleToggleItem(itemKey: string, status: 'COMPLETED' | 'PENDING') {
-    updateItem.mutate({ itemKey, status });
-  }
+  // Local state for editable fields
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [defaultUnit, setDefaultUnit] = useState<string>('px');
+  const [figmaTokenId, setFigmaTokenId] = useState('');
+  const [webflowTokenId, setWebflowTokenId] = useState('');
+  const [webflowSiteId, setWebflowSiteId] = useState('');
+  const [anthropicTokenId, setAnthropicTokenId] = useState('');
+  const [scalingConfig, setScalingConfig] = useState<ScalingConfig | undefined>(undefined);
 
-  function handleReset() {
-    resetProgress.mutate(undefined, {
-      onSuccess: () => setResetConfirmOpen(false),
+  // Sync from project data
+  useEffect(() => {
+    if (project) {
+      setName(project.name);
+      setDescription(project.description ?? '');
+      setDefaultUnit((project as unknown as Record<string, unknown>).defaultUnit as string ?? 'px');
+      setFigmaTokenId(project.figmaTokenId ?? '');
+      setWebflowTokenId(project.webflowTokenId ?? '');
+      setWebflowSiteId(project.webflowSiteId ?? '');
+      setAnthropicTokenId(project.anthropicTokenId ?? '');
+      setScalingConfig((project as unknown as Record<string, unknown>).scalingConfig as ScalingConfig | undefined);
+    }
+  }, [project]);
+
+  const figmaTokens = vault?.figma ?? [];
+  const webflowTokens = vault?.webflow ?? [];
+  const anthropicTokens = vault?.anthropic ?? [];
+
+  const canContinue = !!figmaTokenId && !!webflowTokenId && !!webflowSiteId;
+
+  // Auto-save connection changes
+  const handleConnectionChange = async (field: string, value: string) => {
+    if (!projectId) return;
+    await updateDocument('projects', projectId, { [field]: value || null });
+    toast.success('Connection updated');
+  };
+
+  const handleSaveInfo = () => {
+    if (!projectId) return;
+    updateProject.mutate({
+      id: projectId,
+      name: name.trim(),
+      description: description.trim() || undefined,
     });
-  }
+  };
 
-  function handleSaveProfile(name: string, config: Record<string, boolean>) {
-    createProfile.mutate(
-      { name, checklistConfig: config },
-      { onSuccess: () => setSaveProfileOpen(false) },
+  const handleArchive = async () => {
+    if (!projectId) return;
+    await updateDocument('projects', projectId, { isArchived: true });
+    setArchiveConfirmOpen(false);
+    toast.success('Project archived');
+    navigate('/');
+  };
+
+  const handleDelete = () => {
+    if (!projectId) return;
+    deleteProject.mutate(projectId, {
+      onSuccess: () => {
+        setDeleteConfirmOpen(false);
+        navigate('/');
+      },
+    });
+  };
+
+  const handleScalingChange = async (config: ScalingConfig) => {
+    setScalingConfig(config);
+    if (!projectId) return;
+    await updateDocument('projects', projectId, { scalingConfig: config });
+  };
+
+  const handleDefaultUnitChange = async (unit: string) => {
+    setDefaultUnit(unit);
+    if (!projectId) return;
+    await updateDocument('projects', projectId, { defaultUnit: unit });
+    toast.success('Default unit updated');
+  };
+
+  if (projectsLoading) {
+    return (
+      <div>
+        <PageHeader title="Project Setup" description="Loading..." />
+        <div style={{ padding: 24 }}>
+          <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Loader2 size={24} className="animate-spin" style={{ color: 'var(--text-tertiary)' }} />
+          </div>
+        </div>
+      </div>
     );
   }
 
-  function handleApplyProfile(pId: string) {
-    applyProfile.mutate(pId);
-    setProfileDropdownOpen(false);
+  if (!project) {
+    return (
+      <div>
+        <PageHeader title="Project Setup" description="Select a project." />
+        <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 'var(--text-sm)' }}>
+          No project selected. Go to the dashboard and select a project.
+        </div>
+      </div>
+    );
   }
-
-  const progress = setupData?.progress;
 
   return (
     <>
       <PageHeader
         title="Project Setup"
-        description={selectedProject ? `Configuring ${selectedProject.name}` : 'Select a project to configure.'}
-        actions={
-          <div className="flex items-center" style={{ gap: 8 }}>
-            {/* Profile dropdown */}
-            {projectId && (
-              <div style={{ position: 'relative' }}>
-                <button
-                  onClick={() => {
-                    setProfileDropdownOpen(!profileDropdownOpen);
-                    setProjectDropdownOpen(false);
-                  }}
-                  className="flex items-center border-none cursor-pointer"
-                  style={{
-                    height: 36,
-                    padding: '0 12px',
-                    gap: 6,
-                    borderRadius: 'var(--radius-md)',
-                    border: '1px solid var(--border-default)',
-                    backgroundColor: 'transparent',
-                    color: 'var(--text-primary)',
-                    fontSize: 'var(--text-sm)',
-                    fontWeight: 500,
-                    fontFamily: 'var(--font-sans)',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = 'var(--surface-hover)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = 'transparent';
-                  }}
-                >
-                  <Upload size={14} />
-                  <span>Profiles</span>
-                  <ChevronDown size={14} />
-                </button>
-
-                {profileDropdownOpen && (
-                  <>
-                    <div
-                      className="fixed inset-0"
-                      style={{ zIndex: 40 }}
-                      onClick={() => setProfileDropdownOpen(false)}
-                    />
-                    <div
-                      style={{
-                        position: 'absolute',
-                        top: 'calc(100% + 4px)',
-                        right: 0,
-                        width: 240,
-                        backgroundColor: 'var(--bg-elevated)',
-                        border: '1px solid var(--border-default)',
-                        borderRadius: 'var(--radius-lg)',
-                        boxShadow: 'var(--shadow-elevated)',
-                        padding: 4,
-                        zIndex: 50,
-                        animation: 'fadeIn 100ms ease-out',
-                      }}
-                    >
-                      {/* Save current */}
-                      <button
-                        onClick={() => {
-                          setSaveProfileOpen(true);
-                          setProfileDropdownOpen(false);
-                        }}
-                        className="flex items-center w-full border-none bg-transparent cursor-pointer"
-                        style={{
-                          height: 34,
-                          padding: '0 10px',
-                          gap: 8,
-                          borderRadius: 'var(--radius-md)',
-                          fontSize: 'var(--text-sm)',
-                          fontWeight: 500,
-                          color: 'var(--text-primary)',
-                          fontFamily: 'var(--font-sans)',
-                          textAlign: 'left',
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = 'var(--surface-hover)';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = 'transparent';
-                        }}
-                      >
-                        <Save size={14} style={{ color: 'var(--text-tertiary)' }} />
-                        Save current as profile
-                      </button>
-
-                      {/* Divider + saved profiles */}
-                      {profiles && profiles.length > 0 && (
-                        <>
-                          <div
-                            style={{
-                              height: 1,
-                              backgroundColor: 'var(--border-subtle)',
-                              margin: '4px 0',
-                            }}
-                          />
-                          <div
-                            style={{
-                              padding: '4px 10px 2px',
-                              fontSize: 'var(--text-xs)',
-                              fontWeight: 500,
-                              color: 'var(--text-tertiary)',
-                              textTransform: 'uppercase',
-                              letterSpacing: '0.05em',
-                            }}
-                          >
-                            Saved profiles
-                          </div>
-                          {profiles.map((profile) => (
-                            <div
-                              key={profile.id}
-                              className="flex items-center"
-                              style={{
-                                padding: '0 4px 0 10px',
-                                height: 34,
-                                borderRadius: 'var(--radius-md)',
-                                gap: 6,
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.backgroundColor = 'var(--surface-hover)';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.backgroundColor = 'transparent';
-                              }}
-                            >
-                              <button
-                                onClick={() => handleApplyProfile(profile.id)}
-                                className="flex-1 border-none bg-transparent cursor-pointer"
-                                style={{
-                                  padding: 0,
-                                  fontSize: 'var(--text-sm)',
-                                  fontWeight: 500,
-                                  color: 'var(--text-primary)',
-                                  fontFamily: 'var(--font-sans)',
-                                  textAlign: 'left',
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                  whiteSpace: 'nowrap',
-                                }}
-                              >
-                                {profile.name}
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  deleteProfile.mutate(profile.id);
-                                }}
-                                className="flex items-center justify-center border-none bg-transparent cursor-pointer shrink-0"
-                                style={{
-                                  width: 26,
-                                  height: 26,
-                                  borderRadius: 'var(--radius-sm)',
-                                  color: 'var(--text-tertiary)',
-                                }}
-                                onMouseEnter={(e) => {
-                                  e.currentTarget.style.color = 'var(--error)';
-                                }}
-                                onMouseLeave={(e) => {
-                                  e.currentTarget.style.color = 'var(--text-tertiary)';
-                                }}
-                                aria-label={`Delete profile "${profile.name}"`}
-                              >
-                                <Trash2 size={13} />
-                              </button>
-                            </div>
-                          ))}
-                        </>
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-
-            {/* Reset button */}
-            {projectId && (
-              <button
-                onClick={() => setResetConfirmOpen(true)}
-                className="flex items-center border-none cursor-pointer"
-                style={{
-                  height: 36,
-                  padding: '0 12px',
-                  gap: 6,
-                  borderRadius: 'var(--radius-md)',
-                  border: '1px solid var(--border-default)',
-                  backgroundColor: 'transparent',
-                  color: 'var(--text-secondary)',
-                  fontSize: 'var(--text-sm)',
-                  fontWeight: 500,
-                  fontFamily: 'var(--font-sans)',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = 'var(--surface-hover)';
-                  e.currentTarget.style.color = 'var(--text-primary)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                  e.currentTarget.style.color = 'var(--text-secondary)';
-                }}
-              >
-                <RotateCcw size={14} />
-                <span>Reset</span>
-              </button>
-            )}
-          </div>
-        }
+        description={`Configure ${project.name}`}
       />
 
-      <div
-        style={{
-          maxWidth: 800,
-          margin: '0 auto',
-          padding: '24px',
-        }}
-      >
-        {/* Project selector */}
-        <div style={{ marginBottom: 24, position: 'relative' }}>
-          <label
-            style={{
-              display: 'block',
-              fontSize: 'var(--text-xs)',
-              fontWeight: 500,
-              color: 'var(--text-tertiary)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-              marginBottom: 6,
-            }}
-          >
-            Project
-          </label>
-          <button
-            onClick={() => {
-              setProjectDropdownOpen(!projectDropdownOpen);
-              setProfileDropdownOpen(false);
-            }}
-            disabled={projectsLoading}
-            className="flex items-center justify-between w-full border-none cursor-pointer"
-            style={{
-              height: 40,
-              padding: '0 14px',
-              borderRadius: 'var(--radius-md)',
-              border: '1px solid var(--border-default)',
-              backgroundColor: 'var(--bg-primary)',
-              color: selectedProject ? 'var(--text-primary)' : 'var(--text-tertiary)',
-              fontSize: 'var(--text-sm)',
-              fontWeight: 500,
-              fontFamily: 'var(--font-sans)',
-              textAlign: 'left',
-            }}
-          >
-            <span>{selectedProject?.name ?? (projectsLoading ? 'Loading...' : 'Select a project')}</span>
-            <ChevronDown size={14} style={{ color: 'var(--text-tertiary)' }} />
-          </button>
-
-          {projectDropdownOpen && projects && (
-            <>
-              <div
-                className="fixed inset-0"
-                style={{ zIndex: 40 }}
-                onClick={() => setProjectDropdownOpen(false)}
+      <div style={{ maxWidth: 680, margin: '0 auto', padding: '0 24px 48px' }}>
+        {/* ── Section A: Connections ── */}
+        <SectionCard title="Connections" description="Link your project to external services.">
+          <div className="flex flex-col" style={{ gap: 12 }}>
+            <ConnectionRow
+              label="Figma"
+              required
+              value={figmaTokenId}
+              options={figmaTokens.map((t) => ({ value: t.id, label: t.label }))}
+              connected={!!figmaTokenId}
+              onChange={(v) => { setFigmaTokenId(v); handleConnectionChange('figmaTokenId', v); }}
+              emptyLabel="No Figma tokens"
+            />
+            <ConnectionRow
+              label="Webflow"
+              required
+              value={webflowTokenId}
+              options={webflowTokens.map((t) => ({ value: t.id, label: t.label }))}
+              connected={!!webflowTokenId}
+              onChange={(v) => { setWebflowTokenId(v); handleConnectionChange('webflowTokenId', v); }}
+              emptyLabel="No Webflow tokens"
+            />
+            {webflowTokenId && (
+              <ConnectionRow
+                label="Webflow Site"
+                required
+                value={webflowSiteId}
+                options={(sites ?? []).map((s) => ({ value: s.id, label: s.displayName || s.shortName }))}
+                connected={!!webflowSiteId}
+                onChange={(v) => { setWebflowSiteId(v); handleConnectionChange('webflowSiteId', v); }}
+                emptyLabel={sitesLoading ? 'Loading sites...' : 'No sites found'}
+                loading={sitesLoading}
               />
-              <div
+            )}
+            <ConnectionRow
+              label="Anthropic (AI)"
+              value={anthropicTokenId}
+              options={anthropicTokens.map((t) => ({ value: t.id, label: t.label }))}
+              connected={!!anthropicTokenId}
+              onChange={(v) => { setAnthropicTokenId(v); handleConnectionChange('anthropicTokenId', v); }}
+              emptyLabel="No Anthropic tokens"
+              hint="Optional"
+            />
+          </div>
+          <Link
+            to="/settings"
+            style={{
+              display: 'inline-block',
+              marginTop: 12,
+              fontSize: 'var(--text-xs)',
+              color: 'var(--accent-text)',
+              textDecoration: 'none',
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.textDecoration = 'underline'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.textDecoration = 'none'; }}
+          >
+            Manage tokens in Settings → Integrations
+          </Link>
+        </SectionCard>
+
+        {/* ── Section B: Scaling System ── */}
+        <SectionCard title="Scaling System" description="Configure REM-based responsive scaling.">
+          <ScalingConfigEditor
+            config={scalingConfig}
+            onConfigChange={handleScalingChange}
+          />
+        </SectionCard>
+
+        {/* ── Section C: Project Info ── */}
+        <SectionCard title="Project Info" description="Basic project details.">
+          <div className="flex flex-col" style={{ gap: 12 }}>
+            <div>
+              <label style={labelStyle}>Name</label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                onBlur={handleSaveInfo}
+                style={inputStyle}
+                onFocus={inputFocus}
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>Description</label>
+              <input
+                type="text"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                onBlur={handleSaveInfo}
+                placeholder="Optional"
+                style={inputStyle}
+                onFocus={inputFocus}
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>Default Unit</label>
+              <select
+                value={defaultUnit}
+                onChange={(e) => handleDefaultUnitChange(e.target.value)}
                 style={{
-                  position: 'absolute',
-                  top: 'calc(100% + 4px)',
-                  left: 0,
-                  right: 0,
-                  backgroundColor: 'var(--bg-elevated)',
+                  width: '100%',
+                  height: 36,
+                  padding: '0 12px',
+                  borderRadius: 'var(--radius-md)',
                   border: '1px solid var(--border-default)',
-                  borderRadius: 'var(--radius-lg)',
-                  boxShadow: 'var(--shadow-elevated)',
-                  padding: 4,
-                  zIndex: 50,
-                  maxHeight: 240,
-                  overflowY: 'auto',
-                  animation: 'fadeIn 100ms ease-out',
+                  backgroundColor: 'var(--bg-primary)',
+                  fontSize: 'var(--text-sm)',
+                  color: 'var(--text-primary)',
+                  fontFamily: 'var(--font-sans)',
+                  outline: 'none',
+                  cursor: 'pointer',
                 }}
               >
-                {projects.length === 0 ? (
-                  <div
-                    style={{
-                      padding: '12px',
-                      fontSize: 'var(--text-sm)',
-                      color: 'var(--text-tertiary)',
-                      textAlign: 'center',
-                    }}
-                  >
-                    No projects. Create one from the Dashboard.
-                  </div>
-                ) : (
-                  projects.map((project) => (
-                    <button
-                      key={project.id}
-                      onClick={() => {
-                        setSelectedProjectId(project.id);
-                        setProjectDropdownOpen(false);
-                      }}
-                      className="flex items-center w-full border-none bg-transparent cursor-pointer"
-                      style={{
-                        height: 36,
-                        padding: '0 10px',
-                        borderRadius: 'var(--radius-md)',
-                        fontSize: 'var(--text-sm)',
-                        fontWeight: project.id === projectId ? 600 : 500,
-                        color: project.id === projectId ? 'var(--accent-text)' : 'var(--text-primary)',
-                        fontFamily: 'var(--font-sans)',
-                        textAlign: 'left',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = 'var(--surface-hover)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = 'transparent';
-                      }}
-                    >
-                      {project.name}
-                    </button>
-                  ))
-                )}
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* No project selected */}
-        {!projectId && !projectsLoading && (
-          <div
-            className="flex items-center justify-center"
-            style={{
-              height: 300,
-              border: '1px dashed var(--border-default)',
-              borderRadius: 'var(--radius-lg)',
-              color: 'var(--text-tertiary)',
-              fontSize: 'var(--text-sm)',
-            }}
-          >
-            Select a project above to view its setup checklist.
-          </div>
-        )}
-
-        {/* Loading */}
-        {setupLoading && projectId && <SkeletonSetupPage />}
-
-        {/* Error */}
-        {setupError && (
-          <div
-            className="flex items-center justify-center"
-            style={{
-              height: 300,
-              color: 'var(--error)',
-              fontSize: 'var(--text-sm)',
-            }}
-          >
-            Failed to load setup progress. Check your connection and try again.
-          </div>
-        )}
-
-        {/* Setup content */}
-        {setupData && !setupLoading && (
-          <div style={{ animation: 'fadeIn 200ms ease-out' }}>
-            {/* Progress bar */}
-            {progress && (
-              <div style={{ marginBottom: 24 }}>
-                <div className="flex items-center justify-between" style={{ marginBottom: 8 }}>
-                  <span
-                    style={{
-                      fontSize: 'var(--text-sm)',
-                      fontWeight: 500,
-                      color: 'var(--text-primary)',
-                    }}
-                  >
-                    Setup progress
-                  </span>
-                  <span
-                    style={{
-                      fontSize: 'var(--text-sm)',
-                      fontWeight: 600,
-                      color: progress.percentage === 100 ? 'var(--success)' : 'var(--accent-text)',
-                      fontFamily: 'var(--font-mono)',
-                    }}
-                  >
-                    {progress.percentage}%
-                  </span>
-                </div>
-                <div
-                  style={{
-                    height: 6,
-                    backgroundColor: 'var(--bg-tertiary)',
-                    borderRadius: 3,
-                    overflow: 'hidden',
-                  }}
-                >
-                  <div
-                    style={{
-                      height: '100%',
-                      width: `${progress.percentage}%`,
-                      backgroundColor: progress.percentage === 100 ? 'var(--success)' : 'var(--accent)',
-                      borderRadius: 3,
-                      transition: 'width var(--duration-normal) ease-out',
-                    }}
-                  />
-                </div>
-                <div
-                  className="flex items-center"
-                  style={{
-                    gap: 16,
-                    marginTop: 8,
-                    fontSize: 'var(--text-xs)',
-                    color: 'var(--text-tertiary)',
-                  }}
-                >
-                  <span>{progress.completed} completed</span>
-                  <span>{progress.pending} remaining</span>
-                  {progress.skipped > 0 && <span>{progress.skipped} skipped</span>}
-                </div>
-              </div>
-            )}
-
-            {/* Category sections */}
-            <div className="flex flex-col" style={{ gap: 12 }}>
-              {setupData.categories.map((category) => (
-                <SetupCategorySection
-                  key={category.key}
-                  category={category}
-                  onToggleItem={handleToggleItem}
-                  loading={updateItem.isPending}
-                />
-              ))}
+                <option value="px">px</option>
+                <option value="rem">rem</option>
+                <option value="em">em</option>
+              </select>
             </div>
           </div>
-        )}
+        </SectionCard>
+
+        {/* ── Continue button ── */}
+        <div style={{ marginTop: 24 }}>
+          <button
+            onClick={() => navigate(params.projectId ? `/project/${projectId}/figma` : `/figma?project=${projectId}`)}
+            disabled={!canContinue}
+            className="flex items-center border-none cursor-pointer"
+            style={{
+              height: 40,
+              padding: '0 24px',
+              gap: 8,
+              borderRadius: 'var(--radius-md)',
+              backgroundColor: 'var(--accent)',
+              color: '#fff',
+              fontSize: 'var(--text-base)',
+              fontWeight: 500,
+              fontFamily: 'var(--font-sans)',
+              opacity: canContinue ? 1 : 0.4,
+              transition: 'all var(--duration-fast)',
+              width: '100%',
+              justifyContent: 'center',
+            }}
+            onMouseEnter={(e) => {
+              if (canContinue) e.currentTarget.style.backgroundColor = 'var(--accent-hover)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--accent)';
+            }}
+          >
+            {canContinue ? (
+              <>Continue to Import <ArrowRight size={16} /></>
+            ) : (
+              'Connect Figma and Webflow to continue'
+            )}
+          </button>
+        </div>
+
+        {/* ── Section D: Danger Zone ── */}
+        <div
+          style={{
+            marginTop: 40,
+            padding: 20,
+            borderRadius: 'var(--radius-lg)',
+            border: '1px solid var(--error)',
+            backgroundColor: 'color-mix(in srgb, var(--error) 4%, var(--bg-primary))',
+          }}
+        >
+          <h3 style={{ fontSize: 'var(--text-base)', fontWeight: 600, color: 'var(--error)', margin: '0 0 12px' }}>
+            Danger Zone
+          </h3>
+          <div className="flex" style={{ gap: 8 }}>
+            <button
+              onClick={() => setArchiveConfirmOpen(true)}
+              className="flex items-center cursor-pointer"
+              style={{
+                height: 32,
+                padding: '0 12px',
+                gap: 6,
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid var(--border-default)',
+                backgroundColor: 'transparent',
+                color: 'var(--text-secondary)',
+                fontSize: 'var(--text-sm)',
+                fontWeight: 500,
+                fontFamily: 'var(--font-sans)',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--surface-hover)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+              }}
+            >
+              <Archive size={14} />
+              Archive project
+            </button>
+            <button
+              onClick={() => setDeleteConfirmOpen(true)}
+              className="flex items-center cursor-pointer"
+              style={{
+                height: 32,
+                padding: '0 12px',
+                gap: 6,
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid var(--error)',
+                backgroundColor: 'transparent',
+                color: 'var(--error)',
+                fontSize: 'var(--text-sm)',
+                fontWeight: 500,
+                fontFamily: 'var(--font-sans)',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--error)';
+                e.currentTarget.style.color = '#fff';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+                e.currentTarget.style.color = 'var(--error)';
+              }}
+            >
+              <Trash2 size={14} />
+              Delete project
+            </button>
+          </div>
+        </div>
       </div>
 
-      {/* Save profile dialog */}
-      {setupData && (
-        <SaveProfileDialog
-          open={saveProfileOpen}
-          onClose={() => setSaveProfileOpen(false)}
-          onSave={handleSaveProfile}
-          categories={setupData.categories}
-          loading={createProfile.isPending}
-        />
-      )}
-
-      {/* Reset confirmation */}
       <ConfirmDialog
-        open={resetConfirmOpen}
-        title="Reset setup progress"
-        description="This will reset all checklist items to their initial state. This action cannot be undone."
-        confirmLabel="Reset"
-        onConfirm={handleReset}
-        onCancel={() => setResetConfirmOpen(false)}
-        loading={resetProgress.isPending}
+        open={archiveConfirmOpen}
+        title="Archive project"
+        description={`Archive "${project.name}"? It will be hidden from the dashboard but can be restored later.`}
+        confirmLabel="Archive"
+        onConfirm={handleArchive}
+        onCancel={() => setArchiveConfirmOpen(false)}
+      />
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        title="Delete project"
+        description={`Are you sure you want to delete "${project.name}"? This action cannot be undone.`}
+        confirmLabel="Delete"
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteConfirmOpen(false)}
+        loading={deleteProject.isPending}
         destructive
       />
     </>
   );
 }
+
+/* ─── Section wrapper ─── */
+function SectionCard({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      style={{
+        marginTop: 24,
+        padding: 20,
+        borderRadius: 'var(--radius-lg)',
+        border: '1px solid var(--border-default)',
+        backgroundColor: 'var(--bg-primary)',
+      }}
+    >
+      <h3 style={{ fontSize: 'var(--text-base)', fontWeight: 600, color: 'var(--text-primary)', margin: '0 0 2px' }}>
+        {title}
+      </h3>
+      <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-tertiary)', margin: '0 0 16px' }}>
+        {description}
+      </p>
+      {children}
+    </div>
+  );
+}
+
+/* ─── Connection row ─── */
+function ConnectionRow({
+  label,
+  required,
+  hint,
+  value,
+  options,
+  connected,
+  onChange,
+  emptyLabel,
+  loading,
+}: {
+  label: string;
+  required?: boolean;
+  hint?: string;
+  value: string;
+  options: { value: string; label: string }[];
+  connected: boolean;
+  onChange: (value: string) => void;
+  emptyLabel: string;
+  loading?: boolean;
+}) {
+  return (
+    <div className="flex items-center" style={{ gap: 12 }}>
+      <div style={{ width: 120, flexShrink: 0 }}>
+        <span style={{ fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--text-primary)' }}>
+          {label}
+        </span>
+        {required && (
+          <span style={{ fontSize: 'var(--text-xs)', color: 'var(--error)', marginLeft: 4 }}>*</span>
+        )}
+        {hint && (
+          <span style={{ display: 'block', fontSize: 'var(--text-xs)', color: 'var(--text-tertiary)' }}>
+            {hint}
+          </span>
+        )}
+      </div>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={loading}
+        style={{
+          flex: 1,
+          height: 36,
+          padding: '0 12px',
+          borderRadius: 'var(--radius-md)',
+          border: '1px solid var(--border-default)',
+          backgroundColor: 'var(--bg-primary)',
+          fontSize: 'var(--text-sm)',
+          color: 'var(--text-primary)',
+          fontFamily: 'var(--font-sans)',
+          outline: 'none',
+          cursor: 'pointer',
+          opacity: loading ? 0.6 : 1,
+        }}
+      >
+        <option value="">{options.length === 0 ? emptyLabel : 'Select...'}</option>
+        {options.map((opt) => (
+          <option key={opt.value} value={opt.value}>{opt.label}</option>
+        ))}
+      </select>
+      <div style={{ width: 20, flexShrink: 0, display: 'flex', justifyContent: 'center' }}>
+        {connected ? (
+          <Check size={16} style={{ color: 'var(--accent)' }} />
+        ) : required ? (
+          <X size={14} style={{ color: 'var(--text-tertiary)' }} />
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Shared styles ─── */
+const labelStyle: React.CSSProperties = {
+  display: 'block',
+  fontSize: 'var(--text-sm)',
+  fontWeight: 500,
+  color: 'var(--text-secondary)',
+  marginBottom: 4,
+};
+
+const inputStyle: React.CSSProperties = {
+  width: '100%',
+  height: 36,
+  padding: '0 12px',
+  borderRadius: 'var(--radius-md)',
+  border: '1px solid var(--border-default)',
+  backgroundColor: 'var(--bg-primary)',
+  fontSize: 'var(--text-sm)',
+  color: 'var(--text-primary)',
+  fontFamily: 'var(--font-sans)',
+  outline: 'none',
+  boxSizing: 'border-box',
+};
+
+const inputFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+  e.currentTarget.style.borderColor = 'var(--accent)';
+  e.currentTarget.style.boxShadow = '0 0 0 2px var(--accent-subtle)';
+};

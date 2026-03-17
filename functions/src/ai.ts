@@ -1,5 +1,5 @@
 import { onCall } from 'firebase-functions/v2/https';
-import { requireAuth, getUserToken, callClaudeJson } from './utils';
+import { requireAuth, getProjectToken, getUserToken, callClaudeJson } from './utils';
 
 interface CodeReviewResult {
   issues: Array<{
@@ -16,11 +16,21 @@ interface CodeReviewResult {
 
 export const aiCodeReview = onCall({ region: 'europe-west1', timeoutSeconds: 60 }, async (request) => {
   const uid = requireAuth(request);
-  const { code, codeType } = request.data as { code: string; codeType: 'html' | 'css' | 'javascript' };
+  const { code, codeType, projectId } = request.data as {
+    code: string;
+    codeType: 'html' | 'css' | 'javascript';
+    projectId?: string;
+  };
 
   if (!code?.trim()) throw new Error('Code is required');
 
-  const apiKey = await getUserToken(uid, 'anthropic');
+  // Use project token if projectId provided, otherwise fall back to first vault token
+  let apiKey: string | null;
+  if (projectId) {
+    apiKey = await getProjectToken(uid, projectId, 'anthropic');
+  } else {
+    apiKey = await getUserToken(uid, 'anthropic');
+  }
   if (!apiKey) throw new Error('Anthropic API key not set. Go to Settings → Integrations.');
 
   const result = await callClaudeJson<CodeReviewResult>({

@@ -1,8 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MoreHorizontal, Pencil, Trash2, FolderOpen, Settings2, Star, Copy, StickyNote, FileText, Zap, Search, Bot } from 'lucide-react';
-import { useIsFavorited, useToggleFavorite } from '@/hooks/use-favorites';
-import { useProjectScores } from '@/hooks/use-project-scores';
+import { MoreHorizontal, Pencil, Trash2, FolderOpen, Copy } from 'lucide-react';
 import type { Project } from '@/types/project';
 
 export interface ProjectCardProps {
@@ -10,16 +8,31 @@ export interface ProjectCardProps {
   onEdit: (project: Project) => void;
   onDelete: (project: Project) => void;
   onDuplicate?: (project: Project) => void;
-  onNotes?: (project: Project) => void;
-  onHandoffReport?: (project: Project) => void;
 }
 
-export function ProjectCard({ project, onEdit, onDelete, onDuplicate, onNotes, onHandoffReport }: ProjectCardProps) {
+/** Compute which workflow steps are complete for progress dots */
+function getCompletedSteps(project: Project): boolean[] {
+  const step1 = !!(project.figmaTokenId && project.webflowTokenId && project.webflowSiteId);
+  const step2 = !!project.figmaFileKey;
+  const step3 = step2; // structure editing — same proxy for now
+  const step4 = false; // styling is optional
+  const step5 = false; // push tracking TBD
+  return [step1, step2, step3, step4, step5];
+}
+
+/** Smart-route to the next incomplete step */
+function getSmartRoute(project: Project): string {
+  const steps = getCompletedSteps(project);
+  if (!steps[0]) return `/setup?project=${project.id}`;
+  if (!steps[1]) return `/figma?project=${project.id}`;
+  // Default to setup for now — will change to /project/:id/... routes in Section 6
+  return `/setup?project=${project.id}`;
+}
+
+export function ProjectCard({ project, onEdit, onDelete, onDuplicate }: ProjectCardProps) {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
-  const { data: isFavorited } = useIsFavorited('project', project.id);
-  const toggleFavorite = useToggleFavorite();
-  const { data: scores } = useProjectScores(project.id);
+  const completedSteps = getCompletedSteps(project);
 
   const formattedDate = new Date(project.createdAt).toLocaleDateString('en-US', {
     month: 'short',
@@ -29,7 +42,7 @@ export function ProjectCard({ project, onEdit, onDelete, onDuplicate, onNotes, o
 
   return (
     <div
-      onClick={() => navigate(`/setup?project=${project.id}`)}
+      onClick={() => navigate(getSmartRoute(project))}
       style={{
         position: 'relative',
         backgroundColor: 'var(--bg-primary)',
@@ -95,34 +108,7 @@ export function ProjectCard({ project, onEdit, onDelete, onDuplicate, onNotes, o
         </div>
 
         {/* Actions */}
-        <div className="flex items-center" style={{ gap: 2 }}>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              toggleFavorite.mutate({ type: 'project', targetId: project.id });
-            }}
-            className="flex items-center justify-center border-none bg-transparent cursor-pointer"
-            style={{
-              width: 28,
-              height: 28,
-              borderRadius: 'var(--radius-md)',
-              color: isFavorited ? '#f59e0b' : 'var(--text-tertiary)',
-              transition: 'color var(--duration-fast)',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = 'var(--surface-active)';
-              if (!isFavorited) e.currentTarget.style.color = '#f59e0b';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'transparent';
-              if (!isFavorited) e.currentTarget.style.color = 'var(--text-tertiary)';
-            }}
-            aria-label={isFavorited ? 'Remove from favorites' : 'Add to favorites'}
-          >
-            <Star size={14} fill={isFavorited ? '#f59e0b' : 'none'} />
-          </button>
-
-          <div style={{ position: 'relative' }}>
+        <div style={{ position: 'relative' }}>
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -149,14 +135,13 @@ export function ProjectCard({ project, onEdit, onDelete, onDuplicate, onNotes, o
             <MoreHorizontal size={16} />
           </button>
 
-          {/* Dropdown menu */}
           {menuOpen && (
             <div
               style={{
                 position: 'absolute',
                 top: 32,
                 right: 0,
-                width: 160,
+                width: 140,
                 backgroundColor: 'var(--bg-elevated)',
                 border: '1px solid var(--border-default)',
                 borderRadius: 'var(--radius-md)',
@@ -165,238 +150,97 @@ export function ProjectCard({ project, onEdit, onDelete, onDuplicate, onNotes, o
                 overflow: 'hidden',
               }}
             >
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setMenuOpen(false);
-                  navigate(`/setup?project=${project.id}`);
-                }}
-                className="flex items-center w-full border-none bg-transparent cursor-pointer"
-                style={{
-                  height: 36,
-                  padding: '0 12px',
-                  gap: 8,
-                  fontSize: 'var(--text-sm)',
-                  fontWeight: 500,
-                  color: 'var(--text-secondary)',
-                  fontFamily: 'var(--font-sans)',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = 'var(--surface-hover)';
-                  e.currentTarget.style.color = 'var(--text-primary)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                  e.currentTarget.style.color = 'var(--text-secondary)';
-                }}
-              >
-                <Settings2 size={14} />
-                <span>Setup</span>
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setMenuOpen(false);
-                  onEdit(project);
-                }}
-                className="flex items-center w-full border-none bg-transparent cursor-pointer"
-                style={{
-                  height: 36,
-                  padding: '0 12px',
-                  gap: 8,
-                  fontSize: 'var(--text-sm)',
-                  fontWeight: 500,
-                  color: 'var(--text-secondary)',
-                  fontFamily: 'var(--font-sans)',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = 'var(--surface-hover)';
-                  e.currentTarget.style.color = 'var(--text-primary)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                  e.currentTarget.style.color = 'var(--text-secondary)';
-                }}
-              >
-                <Pencil size={14} />
-                <span>Edit</span>
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setMenuOpen(false);
-                  onDuplicate?.(project);
-                }}
-                className="flex items-center w-full border-none bg-transparent cursor-pointer"
-                style={{
-                  height: 36,
-                  padding: '0 12px',
-                  gap: 8,
-                  fontSize: 'var(--text-sm)',
-                  fontWeight: 500,
-                  color: 'var(--text-secondary)',
-                  fontFamily: 'var(--font-sans)',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = 'var(--surface-hover)';
-                  e.currentTarget.style.color = 'var(--text-primary)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                  e.currentTarget.style.color = 'var(--text-secondary)';
-                }}
-              >
-                <Copy size={14} />
-                <span>Duplicate</span>
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setMenuOpen(false);
-                  onNotes?.(project);
-                }}
-                className="flex items-center w-full border-none bg-transparent cursor-pointer"
-                style={{
-                  height: 36,
-                  padding: '0 12px',
-                  gap: 8,
-                  fontSize: 'var(--text-sm)',
-                  fontWeight: 500,
-                  color: 'var(--text-secondary)',
-                  fontFamily: 'var(--font-sans)',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = 'var(--surface-hover)';
-                  e.currentTarget.style.color = 'var(--text-primary)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                  e.currentTarget.style.color = 'var(--text-secondary)';
-                }}
-              >
-                <StickyNote size={14} />
-                <span>Notes</span>
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setMenuOpen(false);
-                  onHandoffReport?.(project);
-                }}
-                className="flex items-center w-full border-none bg-transparent cursor-pointer"
-                style={{
-                  height: 36,
-                  padding: '0 12px',
-                  gap: 8,
-                  fontSize: 'var(--text-sm)',
-                  fontWeight: 500,
-                  color: 'var(--text-secondary)',
-                  fontFamily: 'var(--font-sans)',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = 'var(--surface-hover)';
-                  e.currentTarget.style.color = 'var(--text-primary)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                  e.currentTarget.style.color = 'var(--text-secondary)';
-                }}
-              >
-                <FileText size={14} />
-                <span>Handoff Report</span>
-              </button>
+              <MenuButton
+                icon={Pencil}
+                label="Edit"
+                onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onEdit(project); }}
+              />
+              <MenuButton
+                icon={Copy}
+                label="Duplicate"
+                onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onDuplicate?.(project); }}
+              />
               <div style={{ height: 1, backgroundColor: 'var(--border-subtle)', margin: '4px 0' }} />
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setMenuOpen(false);
-                  onDelete(project);
-                }}
-                className="flex items-center w-full border-none bg-transparent cursor-pointer"
-                style={{
-                  height: 36,
-                  padding: '0 12px',
-                  gap: 8,
-                  fontSize: 'var(--text-sm)',
-                  fontWeight: 500,
-                  color: 'var(--error)',
-                  fontFamily: 'var(--font-sans)',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = 'var(--surface-hover)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'transparent';
-                }}
-              >
-                <Trash2 size={14} />
-                <span>Delete</span>
-              </button>
+              <MenuButton
+                icon={Trash2}
+                label="Delete"
+                danger
+                onClick={(e) => { e.stopPropagation(); setMenuOpen(false); onDelete(project); }}
+              />
             </div>
           )}
         </div>
-        </div>
       </div>
 
-      {/* Audit scores */}
-      {scores && (scores.speed !== null || scores.seo !== null || scores.aeo !== null) && (
-        <div
-          className="flex items-center"
-          style={{
-            marginTop: 12,
-            gap: 8,
-          }}
-        >
-          {scores.speed !== null && (
-            <ScoreBadge icon={Zap} label="Speed" score={scores.speed} />
-          )}
-          {scores.seo !== null && (
-            <ScoreBadge icon={Search} label="SEO" score={scores.seo} />
-          )}
-          {scores.aeo !== null && (
-            <ScoreBadge icon={Bot} label="AEO" score={scores.aeo} />
-          )}
-        </div>
-      )}
-
-      {/* Footer */}
+      {/* Footer with progress dots */}
       <div
+        className="flex items-center justify-between"
         style={{
-          marginTop: scores && (scores.speed !== null || scores.seo !== null || scores.aeo !== null) ? 8 : 16,
+          marginTop: 16,
           paddingTop: 12,
           borderTop: '1px solid var(--border-subtle)',
           fontSize: 'var(--text-xs)',
           color: 'var(--text-tertiary)',
         }}
       >
-        Created {formattedDate}
+        <span>Created {formattedDate}</span>
+
+        {/* Workflow progress dots */}
+        <div className="flex items-center" style={{ gap: 4 }}>
+          {completedSteps.map((done, i) => (
+            <div
+              key={i}
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: '50%',
+                backgroundColor: done ? 'var(--accent)' : 'var(--border-default)',
+                transition: 'background-color var(--duration-fast)',
+              }}
+              title={['Setup', 'Import', 'Structure', 'Style', 'Push'][i]}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );
 }
 
-function ScoreBadge({ icon: Icon, label, score }: { icon: typeof Zap; label: string; score: number }) {
-  const rounded = Math.round(score);
-  const color = rounded >= 80 ? 'var(--accent)' : rounded >= 60 ? '#f59e0b' : 'var(--error)';
-  const bg = rounded >= 80 ? 'rgba(16, 185, 129, 0.08)' : rounded >= 60 ? 'rgba(245, 158, 11, 0.08)' : 'rgba(239, 68, 68, 0.08)';
-
+function MenuButton({
+  icon: Icon,
+  label,
+  danger,
+  onClick,
+}: {
+  icon: typeof Pencil;
+  label: string;
+  danger?: boolean;
+  onClick: (e: React.MouseEvent) => void;
+}) {
   return (
-    <div
-      className="flex items-center"
-      title={`${label}: ${rounded}`}
+    <button
+      onClick={onClick}
+      className="flex items-center w-full border-none bg-transparent cursor-pointer"
       style={{
-        gap: 4,
-        padding: '2px 6px',
-        borderRadius: 'var(--radius-sm)',
-        backgroundColor: bg,
-        fontSize: 'var(--text-xs)',
+        height: 36,
+        padding: '0 12px',
+        gap: 8,
+        fontSize: 'var(--text-sm)',
         fontWeight: 500,
-        fontFamily: 'var(--font-mono)',
-        color,
+        color: danger ? 'var(--error)' : 'var(--text-secondary)',
+        fontFamily: 'var(--font-sans)',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.backgroundColor = 'var(--surface-hover)';
+        if (!danger) e.currentTarget.style.color = 'var(--text-primary)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.backgroundColor = 'transparent';
+        if (!danger) e.currentTarget.style.color = 'var(--text-secondary)';
       }}
     >
-      <Icon size={10} />
-      <span>{rounded}</span>
-    </div>
+      <Icon size={14} />
+      <span>{label}</span>
+    </button>
   );
 }

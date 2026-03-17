@@ -1,10 +1,9 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Search, LayoutDashboard, Settings, Wrench, Figma, LayoutTemplate,
-  Sparkles, Gauge, SearchCheck, Brain, Zap, Plus, Moon, Sun, PanelLeftClose,
-  PanelLeft, Keyboard, Activity, FileText, HeartPulse, Clock, BookOpen,
-  Users, Globe,
+  Search, LayoutDashboard, Settings, Wrench, LayoutTemplate,
+  Sparkles, Plus, Moon, Sun, PanelLeftClose,
+  PanelLeft, Keyboard, Clock, BookOpen,
 } from 'lucide-react';
 import { useTheme } from '@/hooks/use-theme';
 import { useSidebar } from '@/hooks/use-sidebar';
@@ -81,19 +80,10 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
       // Navigation
       { id: 'nav-dashboard', label: 'Go to Dashboard', icon: LayoutDashboard, category: 'navigation', action: nav('/') },
       { id: 'nav-setup', label: 'Go to Project Setup', icon: Wrench, category: 'navigation', action: nav('/setup') },
-      { id: 'nav-figma', label: 'Go to Figma Translator', icon: Figma, category: 'navigation', action: nav('/figma') },
       { id: 'nav-templates', label: 'Go to Templates', icon: LayoutTemplate, category: 'navigation', action: nav('/templates') },
       { id: 'nav-animations', label: 'Go to Animations', icon: Sparkles, category: 'navigation', action: nav('/animations') },
-      { id: 'nav-speed', label: 'Go to Page Speed', icon: Gauge, category: 'navigation', action: nav('/speed') },
-      { id: 'nav-seo', label: 'Go to SEO Audit', icon: SearchCheck, category: 'navigation', action: nav('/seo') },
-      { id: 'nav-aeo', label: 'Go to AEO', icon: Brain, category: 'navigation', action: nav('/aeo') },
-      { id: 'nav-health', label: 'Go to Site Health', icon: HeartPulse, category: 'navigation', action: nav('/health') },
-      { id: 'nav-activity', label: 'Go to Activity', icon: Activity, category: 'navigation', action: nav('/activity') },
-      { id: 'nav-reports', label: 'Go to Reports', icon: FileText, category: 'navigation', action: nav('/reports') },
       { id: 'nav-settings', label: 'Go to Settings', icon: Settings, category: 'navigation', shortcut: '⌘,', action: nav('/settings') },
       { id: 'nav-guide', label: 'Go to Guide', icon: BookOpen, category: 'navigation', action: nav('/guide') },
-      { id: 'nav-teams', label: 'Go to Teams', icon: Users, category: 'navigation', action: nav('/teams') },
-      { id: 'nav-community', label: 'Go to Community Library', icon: Globe, category: 'navigation', action: nav('/community') },
       // Actions
       { id: 'act-new-project', label: 'Create New Project', icon: Plus, category: 'actions', shortcut: '⌘N', action: () => { navigate('/'); onClose(); } },
       {

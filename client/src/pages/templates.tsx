@@ -19,7 +19,6 @@ import {
   useDeleteTemplate,
   useDuplicateTemplate,
 } from '@/hooks/use-templates';
-import { usePublishTemplate } from '@/hooks/use-community';
 import type { TemplateSummary, TemplateFilters } from '@/types/template';
 
 export default function TemplatesPage() {
@@ -46,7 +45,6 @@ export default function TemplatesPage() {
   const seedMutation = useSeedTemplates();
   const deleteMutation = useDeleteTemplate();
   const duplicateMutation = useDuplicateTemplate();
-  const publishMutation = usePublishTemplate();
 
   const templateList = useMemo(() => templates ?? [], [templates]);
 
@@ -417,7 +415,7 @@ export default function TemplatesPage() {
                 onSelect={handleSelect}
                 onDuplicate={handleDuplicate}
                 onDelete={!t.isPreset ? (tpl) => setDeleteTarget(tpl) : undefined}
-                onPublish={(tpl) => publishMutation.mutate(tpl.id)}
+                onPublish={() => {}}
               />
             ))}
           </div>

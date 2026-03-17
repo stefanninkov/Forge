@@ -5,6 +5,9 @@ export interface Project {
   notes: string | null;
   webflowSiteId: string | null;
   figmaFileKey: string | null;
+  figmaTokenId: string | null;
+  webflowTokenId: string | null;
+  anthropicTokenId: string | null;
   scriptStatus: ScriptStatus;
   lastDeployedAt: string | null;
   createdAt: string;

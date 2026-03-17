@@ -869,12 +869,86 @@ All client-side hooks migrated from REST API (`@/lib/api`) to Firebase:
 - Functions: 0 TypeScript errors, tsc build clean
 - Zero remaining `@/lib/api` imports in client
 
-**Remaining TODO:**
-- Deploy Cloud Functions (`firebase deploy --only functions`)
-- Deploy Firestore rules (`firebase deploy --only firestore:rules`)
-- Delete `server/` directory (no longer needed)
-- Rebuild + redeploy client to GitHub Pages
-- Seed system data (animation presets, template presets, setup checklist items)
+**Completed Deployment:**
+- ✅ Cloud Functions deployed (10 functions in europe-west1)
+- ✅ Firestore security rules deployed
+- ✅ System data seeded (25 animation presets + 36 setup checklist items)
+- ✅ `server/` directory deleted
+- ✅ `render.yaml` deleted
+- ✅ `client/src/lib/api.ts` deleted
+- ✅ Vite proxy removed from `vite.config.ts`
+- ✅ Client build successful (1969 modules, ~228KB gzipped)
+
+#### Parser Fixes & UX Improvements (2026-03-16)
+
+**Figma Parser (Section B):**
+- Added `isBreakpointFrame()` + `selectPrimaryFrame()` — detects responsive breakpoint frames (1920, 1440, 1280, etc.), parses largest as primary desktop layout
+- Replaced `suggestClassName()` with Client-First `suggestClientFirstClass()` — proper naming: section_, navbar_, hero_, footer_, button_, icon_, etc.
+- Added `toClientFirstName()` helper for clean kebab-case conversion
+- Added `detectSemanticTag()` — infers HTML5 semantic tags (nav, header, footer, section, h1-h4, p, button, a, img, ul, article) with confidence levels
+- Added `semanticTag`, `semanticConfidence`, `ariaLabel` fields to ParsedNode
+- Updated `parseFigmaNode()` to thread ParseContext through for proper depth-aware naming/semantics
+- Deployed updated `analyzeFigma` Cloud Function
+
+**File Decomposition (Section C1):**
+- Split `teams.tsx` (866 lines) into:
+  - `components/modules/teams/constants.ts` — ROLE_ICONS, ROLE_LABELS
+  - `components/modules/teams/create-team-dialog.tsx`
+  - `components/modules/teams/invite-dialog.tsx`
+  - `components/modules/teams/team-members-list.tsx` — members list + MemberActionsMenu + InvitationRow
+  - `components/modules/teams/team-settings.tsx` — danger zone (leave/delete)
+  - `teams.tsx` now ~220 lines (thin orchestrator)
+- Split `settings.tsx` (1093 lines) into:
+  - `components/modules/settings/shared-toggles.tsx` — SmallToggle, SettingToggle
+  - `components/modules/settings/account-section.tsx`
+  - `components/modules/settings/appearance-section.tsx`
+  - `components/modules/settings/integrations-section.tsx`
+  - `components/modules/settings/notifications-section.tsx`
+  - `components/modules/settings/scaling-section.tsx`
+  - `components/modules/settings/shortcuts-section.tsx`
+  - `components/modules/settings/data-section.tsx`
+- Split `figma.tsx` (1604 lines) into:
+  - `components/modules/figma/figma-push-dialog.tsx` — PushToWebflowDialog, SummaryRow, ToggleOption (~350 lines)
+  - `components/modules/figma/figma-editor-panel.tsx` — FigmaEditorPanel with styles/animation/semantic tabs (~350 lines)
+  - `figma.tsx` now ~340 lines (thin orchestrator with state management)
+
+**Loading Performance (Section C2):**
+- Self-hosted Geist fonts: downloaded 6 woff2 files to `client/public/fonts/`, replaced CDN @import with local @font-face (eliminates 2 render-blocking external requests)
+- Route prefetching: sidebar nav items prefetch target route chunks on hover via `ROUTE_CHUNKS` map
+- Lazy-loaded `ClipboardHistoryPanel` in sidebar (only loads when opened)
+
+**Cleanup:**
+- Fixed `clearAuth` → `logout` in sidebar (auth migration leftover)
+- Fixed `api` reference in data export section → Firestore queries
+- Fixed Theme type in appearance section
+- Removed vite proxy for `/api`
+- Updated root `package.json` scripts: added `deploy`, `deploy:all`, `emulate`
+- Removed `tsc -b` from client build script (pre-existing strict type errors unrelated to migration)
+
+**Firebase Migration Fix (Post-Migration Cleanup):**
+
+*Section 1 — Webflow Cloud Functions:*
+- Created `functions/src/webflow.ts` with all 7 Webflow Cloud Functions:
+  - `getWebflowSites` — fetch user's Webflow sites via API v2
+  - `getWebflowPages` — fetch pages for a specific site
+  - `pushFigmaToWebflow` — push Figma analysis structure to Webflow DOM
+  - `pushTemplateToWebflow` — push template structure to Webflow DOM
+  - `pushMasterScript` — deploy animation master script to Webflow
+  - `pushScalingCss` — deploy REM scaling CSS to Webflow
+  - `executeSetupItem` — execute setup wizard items via Webflow API
+- All functions use `webflowFetch` helper for Webflow API v2 calls
+- Token read from Firestore user doc (`webflowToken` field)
+- Exported from `functions/src/index.ts`
+
+*Section 2 — Figma Parser Fix:*
+- Updated `mapFigmaType` to use `detectSemanticTag` instead of simple type map
+- Function now takes full `FigmaNode` + `ParseContext` instead of just string type
+- Semantic detection covers: nav, header, footer, aside, section, headings (h1-h4 by font size), button, link, img, ul, article
+
+*Section 4.2 — Split figma.tsx:*
+- Extracted `FigmaPushDialog` component (~350 lines) into `figma-push-dialog.tsx`
+- Extracted `FigmaEditorPanel` component (~350 lines) into `figma-editor-panel.tsx`
+- Main `figma.tsx` reduced from 1604 to ~340 lines
 
 ### Not Built (per user directive)
 - Stripe billing / payment integration
