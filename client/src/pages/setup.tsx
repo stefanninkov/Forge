@@ -22,7 +22,6 @@ export default function SetupPage() {
   const queryProjectId = params.projectId ?? searchParams.get('project');
   const { data: projects, isLoading: projectsLoading } = useProjects();
   const { data: vault } = useTokenVault();
-  const { data: sites, isLoading: sitesLoading } = useWebflowSites(webflowTokenId || undefined);
   const updateProject = useUpdateProject();
   const deleteProject = useDeleteProject();
 
@@ -39,6 +38,9 @@ export default function SetupPage() {
   const [defaultUnit, setDefaultUnit] = useState<string>('px');
   const [figmaTokenId, setFigmaTokenId] = useState('');
   const [webflowTokenId, setWebflowTokenId] = useState('');
+
+  // Fetch sites using the selected token
+  const { data: sites, isLoading: sitesLoading } = useWebflowSites(webflowTokenId || undefined);
   const [webflowSiteId, setWebflowSiteId] = useState('');
   const [anthropicTokenId, setAnthropicTokenId] = useState('');
   const [scalingConfig, setScalingConfig] = useState<ScalingConfig | undefined>(undefined);
