@@ -1,0 +1,1 @@
+import{v as r,w as s,K as n,M as e}from"./index-C1PUjlTV.js";function l(){const t=r();return s({mutationFn:async a=>(await n(e,"analyzeFigma")(a)).data,onSuccess:()=>{t.invalidateQueries({queryKey:["figma-analyses"]})}})}function c(){return s({mutationFn:async t=>(await n(e,"suggestClassNames")({analysisId:t})).data})}export{c as a,l as u};
