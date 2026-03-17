@@ -33,7 +33,11 @@ interface PushToWebflowParams {
 
 // ─── Site & Page Queries ───────────────────────────────────────────────────────
 
-export function useWebflowSites(tokenId?: string) {
+export function useWebflowSites(tokenId?: string | null) {
+  // When tokenId is explicitly null, disable the query (used by setup page before token selected)
+  // When tokenId is undefined, fetch using the default/first vault token
+  // When tokenId is a string, fetch using that specific token
+  const isDisabled = tokenId === null;
   return useQuery({
     queryKey: ['webflow', 'sites', tokenId ?? 'default'],
     queryFn: async () => {
@@ -41,6 +45,7 @@ export function useWebflowSites(tokenId?: string) {
       const result = await fn(tokenId ? { tokenId } : {});
       return result.data.data;
     },
+    enabled: !isDisabled,
     staleTime: 60_000,
     retry: false,
   });

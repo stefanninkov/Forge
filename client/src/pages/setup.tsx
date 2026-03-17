@@ -40,7 +40,7 @@ export default function SetupPage() {
   const [webflowTokenId, setWebflowTokenId] = useState('');
 
   // Fetch sites using the selected token
-  const { data: sites, isLoading: sitesLoading } = useWebflowSites(webflowTokenId || undefined);
+  const { data: sites, isLoading: sitesLoading } = useWebflowSites(webflowTokenId || null);
   const [webflowSiteId, setWebflowSiteId] = useState('');
   const [anthropicTokenId, setAnthropicTokenId] = useState('');
   const [scalingConfig, setScalingConfig] = useState<ScalingConfig | undefined>(undefined);
