@@ -257,6 +257,9 @@ function ProviderRow({
               onChange={(e) => setToken(e.target.value)}
               placeholder={config.placeholder}
               onKeyDown={(e) => e.key === 'Enter' && handleSave()}
+              autoComplete="new-password"
+              data-1p-ignore
+              data-lpignore="true"
               style={{
                 flex: 1,
                 height: 36,

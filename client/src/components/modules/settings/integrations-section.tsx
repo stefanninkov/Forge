@@ -294,6 +294,9 @@ function AddTokenForm({
               value={label}
               onChange={(e) => setLabel(e.target.value)}
               placeholder={`My ${config.name}`}
+              autoComplete="off"
+              data-1p-ignore
+              data-lpignore="true"
               style={{
                 width: '100%',
                 height: 36,
@@ -335,6 +338,9 @@ function AddTokenForm({
               onChange={(e) => setToken(e.target.value)}
               placeholder={config.inputPlaceholder}
               onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
+              autoComplete="new-password"
+              data-1p-ignore
+              data-lpignore="true"
               style={{
                 width: '100%',
                 height: 36,

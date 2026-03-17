@@ -171,6 +171,9 @@ export function MCPConnectionPanel({
                     onKeyDown={(e) => { if (e.key === 'Enter') handleConnect(); }}
                     placeholder="Paste Webflow API token"
                     autoFocus
+                    autoComplete="new-password"
+                    data-1p-ignore
+                    data-lpignore="true"
                     style={{
                       flex: 1, height: 32, padding: '0 10px',
                       border: '1px solid var(--border-default)',
