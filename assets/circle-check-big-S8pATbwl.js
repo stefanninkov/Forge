@@ -1,0 +1,1 @@
+import{c}from"./index-BAYEJdsz.js";const e=[["path",{d:"m18 15-6-6-6 6",key:"153udz"}]],n=c("chevron-up",e);const o=[["path",{d:"M21.801 10A10 10 0 1 1 17 3.335",key:"yps3ct"}],["path",{d:"m9 11 3 3L22 4",key:"1pflzl"}]],p=c("circle-check-big",o);export{n as C,p as a};
